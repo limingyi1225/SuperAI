@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AVAILABLE_MODELS } from '@/lib/models';
 import styles from './SettingsModal.module.css';
 
@@ -15,13 +15,6 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ isOpen, onClose, initialDefaults, onSave, currentTheme, onToggleTheme }: SettingsModalProps) {
     const [selected, setSelected] = useState<string[]>(initialDefaults);
-
-    // Re-sync selected state when modal opens or defaults change
-    useEffect(() => {
-        if (isOpen) {
-            setSelected(initialDefaults);
-        }
-    }, [isOpen, initialDefaults]);
 
     const toggleModel = (modelId: string) => {
         if (selected.includes(modelId)) {

@@ -25,7 +25,7 @@ export const GlassElement = ({
 }: GlassElementProps) => {
   /* Change element depth on click */
   const [clicked, setClicked] = useState(false);
-  let depth = baseDepth / (clicked ? 0.7 : 1);
+  const depth = baseDepth / (clicked ? 0.7 : 1);
 
   /* Dynamic CSS properties */
   const style: CSSProperties = {

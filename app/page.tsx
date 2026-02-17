@@ -58,7 +58,7 @@ function sanitizeModelIds(ids: unknown): string[] {
 }
 
 function MainContent() {
-  const { currentSession, currentSessionId, createSession, addQuestion, updateAnswer, appendToAnswer, appendToReasoningSummary, renameSession, setSessionGeneratingTitle } = useSession();
+  const { currentSession, currentSessionId, createSession, addQuestion, updateAnswer, renameSession, setSessionGeneratingTitle } = useSession();
 
   const [text, setText] = useState('');
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -404,6 +404,10 @@ function MainContent() {
 
     const isFirstInteraction = !currentSession || currentSession.questions.length === 0;
     const answerByModel: Record<string, string> = {};
+    const reasoningByModel: Record<string, string> = {};
+    const modelStatus: Record<string, ModelAnswer['status']> = Object.fromEntries(
+      selectedModels.map(modelId => [modelId, 'pending' as const])
+    );
     let hasRequestedTitle = false;
 
     const requestTitleFromAnswer = (answerText: string) => {
@@ -475,6 +479,7 @@ function MainContent() {
               };
 
               if (data.type === 'start') {
+                modelStatus[data.modelId] = 'streaming';
                 safeUpdateAnswers(prev => prev.map(a =>
                   a.modelId === data.modelId ? { ...a, status: 'streaming', modelName: data.modelName } : a
                 ));
@@ -490,7 +495,7 @@ function MainContent() {
                     ? { ...a, reasoningSummary: (a.reasoningSummary || '') + data.content }
                     : a
                 ));
-                appendToReasoningSummary(questionId, data.modelId, data.content, execSessionId);
+                reasoningByModel[data.modelId] = (reasoningByModel[data.modelId] || '') + data.content;
               } else if (data.type === 'reasoning_summary_done') {
                 // Marker event for UI state sync, no-op for now.
               } else if (data.type === 'chunk') {
@@ -509,19 +514,29 @@ function MainContent() {
                 safeUpdateAnswers(prev => prev.map(a =>
                   a.modelId === data.modelId ? { ...a, content: a.content + data.content } : a
                 ));
-                appendToAnswer(questionId, data.modelId, data.content, execSessionId);
                 answerByModel[data.modelId] = (answerByModel[data.modelId] || '') + data.content;
               } else if (data.type === 'done') {
+                modelStatus[data.modelId] = 'done';
                 safeUpdateAnswers(prev => prev.map(a =>
                   a.modelId === data.modelId ? { ...a, status: 'done' } : a
                 ));
-                updateAnswer(questionId, data.modelId, { status: 'done' }, execSessionId);
+                updateAnswer(questionId, data.modelId, {
+                  status: 'done',
+                  content: answerByModel[data.modelId] || '',
+                  reasoningSummary: reasoningByModel[data.modelId] || '',
+                }, execSessionId);
                 requestTitleFromAnswer(answerByModel[data.modelId] || '');
               } else if (data.type === 'error') {
+                modelStatus[data.modelId] = 'error';
                 safeUpdateAnswers(prev => prev.map(a =>
                   a.modelId === data.modelId ? { ...a, status: 'error', error: data.error } : a
                 ));
-                updateAnswer(questionId, data.modelId, { status: 'error', error: data.error }, execSessionId);
+                updateAnswer(questionId, data.modelId, {
+                  status: 'error',
+                  error: data.error,
+                  content: answerByModel[data.modelId] || '',
+                  reasoningSummary: reasoningByModel[data.modelId] || '',
+                }, execSessionId);
               }
             } catch (e) {
               console.error('Parse error:', e);
@@ -538,24 +553,41 @@ function MainContent() {
             ? { ...a, status: 'done' }
             : a
         ));
-        // Also update session context
-        for (const model of selectedModels) {
-          updateAnswer(questionId, model, { status: 'done' }, execSessionId);
+        // Also update session context with partial outputs collected so far.
+        for (const modelId of selectedModels) {
+          if (modelStatus[modelId] === 'done' || modelStatus[modelId] === 'error') continue;
+          modelStatus[modelId] = 'done';
+          updateAnswer(questionId, modelId, {
+            status: 'done',
+            content: answerByModel[modelId] || '',
+            reasoningSummary: reasoningByModel[modelId] || '',
+          }, execSessionId);
         }
       } else {
         console.error('Submit error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         setAnswers(prev => prev.map(a => ({
-          ...a,
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          ...(a.status === 'done' || a.status === 'error'
+            ? a
+            : { ...a, status: 'error', error: errorMessage }),
         })));
+        for (const modelId of selectedModels) {
+          if (modelStatus[modelId] === 'done' || modelStatus[modelId] === 'error') continue;
+          modelStatus[modelId] = 'error';
+          updateAnswer(questionId, modelId, {
+            status: 'error',
+            error: errorMessage,
+            content: answerByModel[modelId] || '',
+            reasoningSummary: reasoningByModel[modelId] || '',
+          }, execSessionId);
+        }
       }
     } finally {
       abortControllerRef.current = null;
       // Remove this session from generating list
       setGeneratingSessionIds(prev => prev.filter(id => id !== execSessionId));
     }
-  }, [selectedModels, currentSessionId, currentSession, createSession, addQuestion, updateAnswer, appendToAnswer, appendToReasoningSummary, renameSession, responseLanguage, setSessionGeneratingTitle]);
+  }, [selectedModels, currentSessionId, currentSession, createSession, addQuestion, updateAnswer, renameSession, responseLanguage, setSessionGeneratingTitle]);
 
   const handleSubmit = useCallback(async () => {
     if ((!text.trim() && files.length === 0) || selectedModels.length === 0) return;
@@ -678,14 +710,16 @@ function MainContent() {
         </div>
       )}
 
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        initialDefaults={defaultModels}
-        onSave={handleSaveSettings}
-        currentTheme={theme}
-        onToggleTheme={toggleTheme}
-      />
+      {isSettingsOpen && (
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          initialDefaults={defaultModels}
+          onSave={handleSaveSettings}
+          currentTheme={theme}
+          onToggleTheme={toggleTheme}
+        />
+      )}
 
       <main className={styles.main}>
         {/* Messages Area */}

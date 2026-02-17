@@ -93,38 +93,52 @@ function loadFromStorage(): { sessions: Session[]; currentSessionId: string | nu
 export function SessionProvider({ children }: { children: ReactNode }) {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-    const isHydrated = useRef(false);
+    const [storageHydrated, setStorageHydrated] = useState(false);
+    const persistTimerRef = useRef<number | null>(null);
 
-    // Hydrate from localStorage on mount
     useEffect(() => {
         const { sessions: saved, currentSessionId: savedId } = loadFromStorage();
-        if (saved.length > 0) {
+        const hydrateTimer = window.setTimeout(() => {
             setSessions(saved);
             setCurrentSessionId(savedId);
-        }
-        isHydrated.current = true;
+            setStorageHydrated(true);
+        }, 0);
+        return () => {
+            window.clearTimeout(hydrateTimer);
+        };
     }, []);
 
     // Persist sessions to localStorage on change (skip initial hydration write)
     useEffect(() => {
-        if (!isHydrated.current) return;
-        try {
-            const toSave = sessions.map(s => ({ ...s, isGeneratingTitle: false }));
-            localStorage.setItem(SESSIONS_KEY, JSON.stringify(toSave));
-        } catch {
-            // localStorage full or unavailable, silently ignore
+        if (!storageHydrated) return;
+        if (persistTimerRef.current !== null) {
+            window.clearTimeout(persistTimerRef.current);
         }
-    }, [sessions]);
+        const toSave = sessions.map(s => ({ ...s, isGeneratingTitle: false }));
+        persistTimerRef.current = window.setTimeout(() => {
+            try {
+                localStorage.setItem(SESSIONS_KEY, JSON.stringify(toSave));
+            } catch {
+                // localStorage full or unavailable, silently ignore
+            }
+        }, 300);
+        return () => {
+            if (persistTimerRef.current !== null) {
+                window.clearTimeout(persistTimerRef.current);
+                persistTimerRef.current = null;
+            }
+        };
+    }, [sessions, storageHydrated]);
 
     // Persist currentSessionId
     useEffect(() => {
-        if (!isHydrated.current) return;
+        if (!storageHydrated) return;
         if (currentSessionId) {
             localStorage.setItem(CURRENT_SESSION_KEY, currentSessionId);
         } else {
             localStorage.removeItem(CURRENT_SESSION_KEY);
         }
-    }, [currentSessionId]);
+    }, [currentSessionId, storageHydrated]);
 
     const currentSession = sessions.find(s => s.id === currentSessionId) || null;
 

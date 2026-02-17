@@ -160,8 +160,8 @@ export async function* streamGeminiResponse(
         const generateConfig: {
             model: string;
             contents: GeminiConversationContent[];
-            systemInstruction?: string;
-            config?: {
+            config: {
+                systemInstruction?: string;
                 thinkingConfig?: {
                     includeThoughts?: boolean;
                     thinkingBudget?: number;
@@ -171,14 +171,14 @@ export async function* streamGeminiResponse(
         } = {
             model: modelName,
             contents,
+            config: {},
         };
 
         // Add system instruction if provided
         if (systemInstruction) {
-            generateConfig.systemInstruction = systemInstruction;
+            generateConfig.config.systemInstruction = systemInstruction;
         }
 
-        generateConfig.config = generateConfig.config || {};
         generateConfig.config.thinkingConfig = {
             includeThoughts: true,
         };

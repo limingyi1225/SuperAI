@@ -22,11 +22,13 @@ interface LiquidGlassProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 /** Detect if the browser supports SVG filter references in backdrop-filter (Chromium-only) */
-function useSvgBackdropFilter(): boolean | null {
-  const [supported, setSupported] = useState<boolean | null>(null);
-  useEffect(() => {
-    setSupported(CSS.supports?.('backdrop-filter', 'url("#x")') ?? false);
-  }, []);
+function useSvgBackdropFilter(): boolean {
+  const [supported] = useState<boolean>(() => {
+    if (typeof CSS === 'undefined' || typeof CSS.supports !== 'function') {
+      return false;
+    }
+    return CSS.supports('backdrop-filter', 'url("#x")');
+  });
   return supported;
 }
 
