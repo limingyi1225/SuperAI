@@ -1,26 +1,309 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&family=SF+Pro+Text:wght@400;500;600&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Apple-inspired color palette */
+  --bg-primary: #000000;
+  --bg-secondary: #0d0d0d;
+  --bg-elevated: #1a1a1a;
+  --bg-hover: #252525;
+
+  /* Accent - Apple blue gradient */
+  --accent-primary: #2997ff;
+  --accent-secondary: #5ac8fa;
+  /* Keep global accent purely blue/cyan (welcome title gradient is separate in page.module.css) */
+  --accent-gradient: linear-gradient(135deg, #2997ff 0%, #5ac8fa 60%, #2997ff 100%);
+
+  /* Focus ring (disabled by request; keep token for future use) */
+  --focus-ring: rgba(41, 151, 255, 0.95);
+
+  /* Text hierarchy */
+  --text-primary: #f5f5f7;
+  --text-secondary: #8e8e93;
+  --text-tertiary: #7c7c82;
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.14);
+
+  /* Shadows */
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 40px rgba(41, 151, 255, 0.15);
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Border radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Additional colors for light mode compatibility */
+  --bg-tertiary: #252525;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Light Mode Theme */
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f8fa;
+  --bg-elevated: #f0f0f5;
+  --bg-hover: #e8e8ed;
+  --bg-tertiary: #ededf0;
+
+  --text-primary: #1d1d1f;
+  --text-secondary: #636366;
+  --text-tertiary: #8a8a8e;
+
+  --border-subtle: rgba(0, 0, 0, 0.07);
+  --border-medium: rgba(0, 0, 0, 0.12);
+
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 40px rgba(41, 151, 255, 0.08);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+  overflow: hidden;
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Elegant scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Selection */
+::selection {
+  background: rgba(41, 151, 255, 0.3);
+  color: var(--text-primary);
+}
+
+/* Focus states (intentionally hidden by request) */
+*:focus,
+*:focus-visible {
+  outline: none;
+}
+
+/* Typography utilities */
+.text-gradient {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Button base reset */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Input base reset */
+input,
+textarea {
+  font-family: inherit;
+  border: none;
+  background: none;
+}
+
+/* Link reset */
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: opacity 0.2s var(--ease-out);
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* Code styling */
+pre,
+code {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+
+/* KaTeX */
+.katex-display {
+  margin: var(--space-5) 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+
+.katex {
+  font-size: 1.1em;
+}
+
+/* Override KaTeX error color — show errors in normal text color instead of red */
+.katex .katex-error {
+  color: var(--text-primary) !important;
+}
+
+/* Highlight.js theme override */
+.hljs {
+  background: var(--bg-elevated) !important;
+  border-radius: var(--radius-md);
+  padding: var(--space-5) !important;
+  color: var(--text-primary);
+}
+
+/* Theme-aware highlight token colors (replaces "github-dark everywhere" mismatch in light mode) */
+.hljs-comment,
+.hljs-quote {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-built_in {
+  color: var(--accent-primary);
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-regexp {
+  color: #30d158;
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-name {
+  color: #ffd60a;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: #ff9f0a;
+}
+
+.hljs-meta,
+.hljs-attr,
+.hljs-attribute {
+  color: var(--accent-secondary);
+}
+
+[data-theme="light"] .hljs {
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .hljs-comment,
+[data-theme="light"] .hljs-quote {
+  color: var(--text-tertiary);
+}
+
+[data-theme="light"] .hljs-string,
+[data-theme="light"] .hljs-doctag,
+[data-theme="light"] .hljs-regexp {
+  color: #0a7a2f;
+}
+
+[data-theme="light"] .hljs-title,
+[data-theme="light"] .hljs-section,
+[data-theme="light"] .hljs-name {
+  color: #b45309;
+}
+
+/* Smooth animations for all interactive elements */
+button,
+input,
+textarea,
+select,
+a {
+  transition:
+    color 0.2s var(--ease-out),
+    background-color 0.2s var(--ease-out),
+    border-color 0.2s var(--ease-out),
+    box-shadow 0.2s var(--ease-out),
+    transform 0.2s var(--ease-out),
+    opacity 0.2s var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media screen and (max-width: 768px) {
+
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+    /* Prevent iOS zoom */
+  }
 }

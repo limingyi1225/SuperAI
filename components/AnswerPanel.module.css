@@ -1,0 +1,668 @@
+/* AnswerPanel — answer cards with tab-based model switching */
+
+.answerPanel {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    overflow: hidden;
+    transition: border-color 0.3s var(--ease-out);
+}
+
+.answerPanel:hover {
+    border-color: var(--border-medium);
+}
+
+/* Tab bar for multiple models */
+.tabBar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.tabBar::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.tab:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.tab.activeTab {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent-primary);
+    font-weight: 600;
+}
+
+.tabDot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.tabDot.pending {
+    background: var(--text-tertiary);
+    opacity: 0.5;
+}
+
+.tabDot.streaming {
+    background: var(--accent-primary);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.tabDot.done {
+    background: #30d158;
+}
+
+.tabDot.error {
+    background: #ff453a;
+}
+
+.tabLabel {
+    letter-spacing: -0.01em;
+}
+
+/* Individual answer card (no outer border — lives inside answerPanel) */
+.answerCard {
+    overflow: hidden;
+}
+
+/* Card header with model name and status (for single-model view) */
+.cardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.modelInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.modelName {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+}
+
+.statusDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.statusDot.pending {
+    background: var(--text-tertiary);
+    opacity: 0.5;
+}
+
+.statusDot.streaming {
+    background: var(--accent-primary);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.statusDot.done {
+    background: #30d158;
+}
+
+.statusDot.error {
+    background: #ff453a;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.35;
+    }
+}
+
+/* Reasoning Summary Section */
+.reasoningSection {
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.reasoningToggle {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: color 0.2s, background 0.2s;
+    user-select: none;
+    text-align: left;
+    border: none;
+    background: none;
+}
+
+.reasoningToggle:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.reasoningToggleHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.reasoningIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.reasoningIcon svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.3s var(--ease-out);
+}
+
+.reasoningIcon.expanded svg {
+    transform: rotate(90deg);
+}
+
+.reasoningLabel {
+    flex-shrink: 0;
+    text-align: left;
+}
+
+/* Collapsed preview shown under the toggle header */
+.reasoningPeek {
+    display: block;
+    width: 100%;
+    padding: 0 var(--space-4) var(--space-3);
+}
+
+.reasoningPeekMarkdown {
+    padding: var(--space-2) 0 0;
+    background: transparent;
+    border-radius: 0;
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    line-height: 1.6;
+    max-height: 7.6em;
+    overflow: hidden;
+    position: relative;
+    pointer-events: none;
+}
+
+.reasoningPeekMarkdown::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2.2em;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--bg-secondary));
+}
+
+.reasoningPeekMarkdown :where(p, ul, ol, blockquote, pre, h1, h2, h3, h4) {
+    margin: 0 0 0.45em 0;
+}
+
+.reasoningPeekMarkdown :where(p, ul, ol, blockquote, pre, h1, h2, h3, h4):last-child {
+    margin-bottom: 0;
+}
+
+.reasoningPeekMarkdown code {
+    background: transparent;
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+    font-size: 0.88em;
+}
+
+.reasoningPeekMarkdown pre {
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+/* Streaming shimmer for reasoning label */
+.reasoningStreaming {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.shimmerDots {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.shimmerDots span {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    animation: shimmerDot 1.2s ease-in-out infinite;
+}
+
+.shimmerDots span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.shimmerDots span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes shimmerDot {
+
+    0%,
+    80%,
+    100% {
+        opacity: 0.25;
+        transform: scale(0.8);
+    }
+
+    40% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Expanded reasoning content */
+.reasoningContent {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s var(--ease-out);
+}
+
+.reasoningContent.open {
+    max-height: 2000px;
+    overflow-y: auto;
+}
+
+.reasoningInner {
+    padding: 0 var(--space-4) var(--space-4);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    word-break: break-word;
+}
+
+/* Markdown styling inside reasoning */
+.reasoningInner p {
+    margin-bottom: 0.6em;
+}
+
+.reasoningInner p:last-child {
+    margin-bottom: 0;
+}
+
+.reasoningInner ul,
+.reasoningInner ol {
+    margin: 0.4em 0;
+    padding-left: 1.3em;
+}
+
+.reasoningInner li {
+    margin-bottom: 0.2em;
+}
+
+.reasoningInner code {
+    background: var(--bg-elevated);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+    font-size: 0.88em;
+}
+
+.reasoningInner pre {
+    margin: 0.6em 0;
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+}
+
+.reasoningInner pre code {
+    background: none;
+    padding: 0;
+}
+
+.reasoningInner strong {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.reasoningInner blockquote {
+    border-left: 2px solid var(--border-medium);
+    padding-left: var(--space-3);
+    margin: 0.5em 0;
+    color: var(--text-tertiary);
+}
+
+/* Copy button */
+.copyBtn {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s var(--ease-out), color 0.15s, background 0.15s;
+    z-index: 1;
+}
+
+.copyBtn svg {
+    width: 13px;
+    height: 13px;
+}
+
+.copyBtn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    border-color: var(--border-medium);
+}
+
+.copyBtn.copyBtnCopied {
+    color: #30d158;
+    border-color: rgba(48, 209, 88, 0.3);
+    background: rgba(48, 209, 88, 0.08);
+    opacity: 1;
+}
+
+.answerCard:hover .copyBtn {
+    opacity: 1;
+}
+
+/* Main answer content */
+.answerContent {
+    padding: var(--space-4) var(--space-5);
+    font-size: 0.92rem;
+    line-height: 1.75;
+    color: var(--text-primary);
+    min-height: 40px;
+    position: relative;
+}
+
+/* Markdown styling inside answer */
+.answerContent h1,
+.answerContent h2,
+.answerContent h3,
+.answerContent h4 {
+    margin-top: 1.3em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+.answerContent h1 {
+    font-size: 1.4em;
+}
+
+.answerContent h2 {
+    font-size: 1.2em;
+}
+
+.answerContent h3 {
+    font-size: 1.05em;
+}
+
+.answerContent p {
+    margin-bottom: 0.8em;
+}
+
+.answerContent ul,
+.answerContent ol {
+    margin: 0.6em 0;
+    padding-left: 1.5em;
+}
+
+.answerContent li {
+    margin-bottom: 0.3em;
+}
+
+.answerContent code {
+    background: var(--bg-elevated);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.88em;
+    color: var(--accent-primary);
+}
+
+.answerContent pre {
+    margin: 1em 0;
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+}
+
+.answerContent pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+}
+
+.answerContent blockquote {
+    border-left: 3px solid var(--accent-primary);
+    padding-left: var(--space-4);
+    margin: 1em 0;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.answerContent table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    font-size: 0.88em;
+}
+
+.answerContent th,
+.answerContent td {
+    border: 1px solid var(--border-medium);
+    padding: var(--space-2) var(--space-3);
+    text-align: left;
+}
+
+.answerContent th {
+    background: var(--bg-elevated);
+    font-weight: 600;
+}
+
+.answerContent strong {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.answerContent hr {
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    margin: 1.2em 0;
+}
+
+.answerContent a {
+    color: var(--accent-primary);
+    text-decoration: underline;
+    text-decoration-color: rgba(41, 151, 255, 0.3);
+    text-underline-offset: 2px;
+}
+
+.answerContent a:hover {
+    text-decoration-color: var(--accent-primary);
+}
+
+/* Streaming cursor */
+.streamingCursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--accent-primary);
+    margin-left: 2px;
+    animation: blink 1s steps(1) infinite;
+    vertical-align: text-bottom;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
+/* Loading skeleton */
+.skeleton {
+    padding: var(--space-4) var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.skeletonLine {
+    height: 12px;
+    background: var(--bg-elevated);
+    border-radius: 6px;
+    animation: skeletonShimmer 1.8s ease-in-out infinite;
+}
+
+.skeletonLine:nth-child(1) {
+    width: 85%;
+}
+
+.skeletonLine:nth-child(2) {
+    width: 70%;
+    animation-delay: 0.1s;
+}
+
+.skeletonLine:nth-child(3) {
+    width: 60%;
+    animation-delay: 0.2s;
+}
+
+@keyframes skeletonShimmer {
+    0% {
+        opacity: 0.4;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+
+    100% {
+        opacity: 0.4;
+    }
+}
+
+/* Error state */
+.errorContent {
+    padding: var(--space-4) var(--space-5);
+    color: #ff6961;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.errorIcon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+/* Retry button */
+.retryBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin: 0 var(--space-4) var(--space-4);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    transition: all 0.2s var(--ease-out);
+    cursor: pointer;
+    width: fit-content;
+}
+
+.retryBtn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    border-color: var(--border-medium);
+}
+
+.retryBtn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* KaTeX overrides for answer content */
+.answerContent .katex-display {
+    margin: 0.8em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+}
+
+@media (max-width: 768px) {
+    .answerContent {
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.88rem;
+    }
+
+    .peekText {
+        -webkit-line-clamp: 4;
+    }
+
+    .cardHeader {
+        padding: var(--space-2) var(--space-3);
+    }
+
+    .tab {
+        padding: var(--space-2) var(--space-3);
+        font-size: 0.78rem;
+    }
+}

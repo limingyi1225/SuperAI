@@ -1,0 +1,11 @@
+.glass {
+  box-shadow: inset 0 0 4px 0px rgba(255, 255, 255, 0.4);
+}
+
+:global([data-theme="light"]) .glass {
+  /* Subtle neutral specular highlight — mimics real glass edge reflection */
+  box-shadow:
+    inset 0 1px 2px 0px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 1px 0px rgba(255, 255, 255, 0.3),
+    inset 0 0 3px 0px rgba(0, 0, 0, 0.03);
+}
