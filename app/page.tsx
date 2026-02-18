@@ -30,6 +30,19 @@ const FALLBACK_MODELS = REASONING_TIERS.fast;
 const VALID_MODEL_IDS = new Set(AVAILABLE_MODELS.map(model => model.id));
 const MAX_HISTORY_TURNS = 8;
 const MAX_CHARS_PER_TURN = 12000;
+const AUTO_DARK_START_HOUR = 19;
+const AUTO_DARK_END_HOUR = 7;
+
+type ThemeMode = 'dark' | 'light' | 'auto';
+
+function resolveTimeBasedTheme(now: Date = new Date()): 'dark' | 'light' {
+  const hour = now.getHours();
+  return (hour >= AUTO_DARK_START_HOUR || hour < AUTO_DARK_END_HOUR) ? 'dark' : 'light';
+}
+
+function applyThemeToDocument(theme: 'dark' | 'light') {
+  document.documentElement.setAttribute('data-theme', theme);
+}
 
 function clipHistoryText(value: string): string {
   return value.length > MAX_CHARS_PER_TURN ? value.slice(0, MAX_CHARS_PER_TURN) : value;
@@ -80,7 +93,8 @@ function MainContent() {
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [defaultModels, setDefaultModels] = useState<string[]>(FALLBACK_MODELS); // Default defaults
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [themeMode, setThemeMode] = useState<ThemeMode>('auto');
+  const [, setTheme] = useState<'dark' | 'light'>('dark');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dragCounter = useRef(0);
@@ -96,15 +110,23 @@ function MainContent() {
 
 
   // Tier change handler
-  const handleTierChange = (tier: TierId) => {
+  const handleTierChange = useCallback((tier: TierId) => {
     setActiveTier(tier);
     localStorage.setItem('activeTier', tier);
     if (tier === 'custom') {
-      setSelectedModels(customModels);
+      setCustomModels(prev => { setSelectedModels(prev); return prev; });
     } else {
       setSelectedModels(REASONING_TIERS[tier]);
     }
-  };
+  }, []);
+
+  // Custom model change handler (stable ref for React.memo)
+  const handleCustomModelsChange = useCallback((models: string[]) => {
+    setCustomModels(models);
+    setSelectedModels(models);
+    setDefaultModels(models);
+    localStorage.setItem('customModels', JSON.stringify(models));
+  }, []);
 
   // Load tier, custom models, and theme from localStorage
   useEffect(() => {
@@ -140,25 +162,55 @@ function MainContent() {
       setResponseLanguage(savedLang);
     }
 
-    // Theme (migrated from SessionSidebar)
-    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initialTheme = prefersDark ? 'dark' : 'light';
-      setTheme(initialTheme);
-      document.documentElement.setAttribute('data-theme', initialTheme);
-    }
+    // Theme mode: light / dark / auto (time based)
+    const savedThemeMode = localStorage.getItem('themeMode');
+    const legacyTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
+
+    const initialThemeMode: ThemeMode = (
+      savedThemeMode === 'light' || savedThemeMode === 'dark' || savedThemeMode === 'auto'
+        ? savedThemeMode
+        : (legacyTheme ?? 'auto')
+    );
+
+    const initialTheme = initialThemeMode === 'auto' ? resolveTimeBasedTheme() : initialThemeMode;
+    setThemeMode(initialThemeMode);
+    setTheme(initialTheme);
+    applyThemeToDocument(initialTheme);
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
+  const handleThemeModeChange = (nextMode: ThemeMode) => {
+    setThemeMode(nextMode);
+    localStorage.setItem('themeMode', nextMode);
+
+    const nextTheme = nextMode === 'auto' ? resolveTimeBasedTheme() : nextMode;
+    setTheme(nextTheme);
+    applyThemeToDocument(nextTheme);
+
+    // Keep backward compatibility for previous key.
+    if (nextMode === 'auto') {
+      localStorage.removeItem('theme');
+    } else {
+      localStorage.setItem('theme', nextMode);
+    }
   };
+
+  // In auto mode, re-evaluate every minute in case local hour crosses threshold.
+  useEffect(() => {
+    if (themeMode !== 'auto') return;
+
+    const intervalId = window.setInterval(() => {
+      const nextTheme = resolveTimeBasedTheme();
+      setTheme(prev => {
+        if (prev === nextTheme) return prev;
+        applyThemeToDocument(nextTheme);
+        return nextTheme;
+      });
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [themeMode]);
 
   const handleSaveSettings = (newDefaults: string[]) => {
     const sanitizedDefaults = sanitizeModelIds(newDefaults);
@@ -202,17 +254,6 @@ function MainContent() {
       abortControllerRef.current?.abort();
     };
   }, []);
-
-  // Auto-scroll disabled per user request
-  // useEffect(() => {
-  //   const el = messagesAreaRef.current;
-  //   if (!el) return;
-  //   const threshold = 200;
-  //   const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-  //   if (isNearBottom) {
-  //     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-  //   }
-  // }, [answers, currentSession?.questions.length]);
 
   // Escape key to close modals
   useEffect(() => {
@@ -716,8 +757,8 @@ function MainContent() {
           onClose={() => setIsSettingsOpen(false)}
           initialDefaults={defaultModels}
           onSave={handleSaveSettings}
-          currentTheme={theme}
-          onToggleTheme={toggleTheme}
+          currentThemeMode={themeMode}
+          onThemeChange={handleThemeModeChange}
         />
       )}
 
@@ -806,12 +847,7 @@ function MainContent() {
               activeTier={activeTier}
               onTierChange={handleTierChange}
               customModels={customModels}
-              onCustomModelsChange={(models) => {
-                setCustomModels(models);
-                setSelectedModels(models);
-                setDefaultModels(models);
-                localStorage.setItem('customModels', JSON.stringify(models));
-              }}
+              onCustomModelsChange={handleCustomModelsChange}
               disabled={isCurrentSessionGenerating}
             />
 

@@ -183,7 +183,7 @@ function AnswerCard({ answer }: { answer: ModelAnswer }) {
     );
 }
 
-export default function AnswerPanel({ answers, onRetry }: AnswerPanelProps) {
+function AnswerPanel({ answers, onRetry }: AnswerPanelProps) {
     const [activeTab, setActiveTab] = useState(0);
     const allDone = answers.length > 0 && answers.every(a => a.status === 'done' || a.status === 'error');
     const hasError = answers.some(a => a.status === 'error');
@@ -237,3 +237,5 @@ export default function AnswerPanel({ answers, onRetry }: AnswerPanelProps) {
         </div>
     );
 }
+
+export default React.memo(AnswerPanel);

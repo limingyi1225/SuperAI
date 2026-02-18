@@ -74,7 +74,7 @@ function shouldEnableCodeInterpreter(requestedModel: string, resolvedModelName: 
 
     const requested = requestedModel.toLowerCase();
     if (requested === 'gpt-5.2-pro') return false;
-    if (requested === 'gpt-5.2' || requested === 'gpt-5.2-high') return true;
+    if (requested === 'gpt-5.2-low' || requested === 'gpt-5.2' || requested === 'gpt-5.2-high') return true;
 
     const resolved = resolvedModelName.toLowerCase();
     return resolved.includes('gpt-5.2') && !resolved.includes('gpt-5.2-pro');
@@ -117,7 +117,7 @@ function isToolCompatibilityError(status: number, errorBody: string): boolean {
 function isNonProGpt52Model(requestedModel: string, resolvedModelName: string): boolean {
     const requested = requestedModel.toLowerCase();
     if (requested === 'gpt-5.2-pro') return false;
-    if (requested === 'gpt-5.2' || requested === 'gpt-5.2-high') return true;
+    if (requested === 'gpt-5.2-low' || requested === 'gpt-5.2' || requested === 'gpt-5.2-high') return true;
 
     const resolved = resolvedModelName.toLowerCase();
     return resolved.includes('gpt-5.2') && !resolved.includes('pro');
@@ -198,9 +198,12 @@ export async function* streamOpenAIResponse(
     effort: 'low' | 'medium' | 'high' = 'high'
 ): AsyncGenerator<OpenAIStreamEvent> {
     let modelName: string;
-    if (model === 'gpt-5.2-high') {
+    if (model === 'gpt-5.2-low') {
+        modelName = process.env.OPENAI_MODEL_LOW || process.env.OPENAI_MODEL || 'gpt-5.2';
+    } else if (model === 'gpt-5.2-high') {
         modelName = process.env.OPENAI_MODEL_HIGH || 'gpt-5.2';
     } else if (model === 'gpt-5.2-pro') {
+        // "GPT 5.2 (Pro)" display tier maps to a dedicated backend model.
         modelName = process.env.OPENAI_MODEL_PRO || 'gpt-5.2-pro';
     } else if (model === 'gpt-5-nano') {
         modelName = 'gpt-5-nano';

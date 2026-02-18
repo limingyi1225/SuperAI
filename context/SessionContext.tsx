@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface UploadedFile {
@@ -121,7 +121,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             } catch {
                 // localStorage full or unavailable, silently ignore
             }
-        }, 300);
+        }, 800);
         return () => {
             if (persistTimerRef.current !== null) {
                 window.clearTimeout(persistTimerRef.current);
@@ -272,21 +272,36 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         ));
     }, []);
 
+    const contextValue = useMemo<SessionContextType>(() => ({
+        sessions,
+        currentSessionId,
+        currentSession,
+        createSession,
+        selectSession,
+        deleteSession,
+        addQuestion,
+        updateAnswer,
+        appendToAnswer,
+        appendToReasoningSummary,
+        renameSession,
+        setSessionGeneratingTitle,
+    }), [
+        sessions,
+        currentSessionId,
+        currentSession,
+        createSession,
+        selectSession,
+        deleteSession,
+        addQuestion,
+        updateAnswer,
+        appendToAnswer,
+        appendToReasoningSummary,
+        renameSession,
+        setSessionGeneratingTitle,
+    ]);
+
     return (
-        <SessionContext.Provider value={{
-            sessions,
-            currentSessionId,
-            currentSession,
-            createSession,
-            selectSession,
-            deleteSession,
-            addQuestion,
-            updateAnswer,
-            appendToAnswer,
-            appendToReasoningSummary,
-            renameSession,
-            setSessionGeneratingTitle,
-        }}>
+        <SessionContext.Provider value={contextValue}>
             {children}
         </SessionContext.Provider>
     );

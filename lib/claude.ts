@@ -104,8 +104,12 @@ function parseAnthropicBetas(raw: string | undefined): string[] {
 }
 
 function resolveClaudeModel(model: string): string {
-    if (model === 'claude-opus-4-6' || model === 'claude-opus-4-6-high') {
+    if (model === 'claude-opus-4-6' || model === 'claude-opus-4-6-high' || model === 'claude-opus-4-6-low') {
         return process.env.CLAUDE_MODEL_OPUS || process.env.CLAUDE_MODEL || 'claude-opus-4-6';
+    }
+
+    if (model === 'claude-sonnet-4-6') {
+        return process.env.CLAUDE_MODEL_SONNET || process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
     }
 
     return model;
@@ -492,8 +496,16 @@ export async function* streamClaudeResponse(
                         const payload = dataLines.join('\n').trim();
                         if (!payload || payload === '[DONE]') continue;
 
+                        let data: {
+                            type?: unknown;
+                            index?: unknown;
+                            error?: unknown;
+                            content_block?: unknown;
+                            delta?: unknown;
+                            message?: unknown;
+                        };
                         try {
-                            const data = JSON.parse(payload) as {
+                            data = JSON.parse(payload) as {
                                 type?: unknown;
                                 index?: unknown;
                                 error?: unknown;
@@ -501,108 +513,108 @@ export async function* streamClaudeResponse(
                                 delta?: unknown;
                                 message?: unknown;
                             };
-
-                            const eventType = typeof data.type === 'string' ? data.type : '';
-                            if (!eventType) continue;
-
-                            if (eventType === 'error') {
-                                const errorRecord = isRecord(data.error) ? data.error : null;
-                                const message = errorRecord && typeof errorRecord.message === 'string'
-                                    ? errorRecord.message
-                                    : 'Unknown Anthropic stream error';
-                                throw new Error(message);
-                            }
-
-                            if (eventType === 'content_block_start') {
-                                const index = getBlockIndex(data.index);
-                                const contentBlock = isRecord(data.content_block) ? cloneRecord(data.content_block) : null;
-                                if (index !== null && contentBlock) {
-                                    assistantBlocksByIndex.set(index, {
-                                        block: contentBlock,
-                                        toolInputJsonBuffer: '',
-                                    });
-                                }
-
-                                const contentType = contentBlock && typeof contentBlock.type === 'string'
-                                    ? contentBlock.type
-                                    : '';
-
-                                if (contentType === 'text' && typeof contentBlock?.text === 'string' && contentBlock.text) {
-                                    emittedAnyContentThisToolAttempt = true;
-                                    yield { type: 'answer_delta', content: contentBlock.text };
-                                }
-
-                                if (
-                                    contentType === 'thinking' &&
-                                    typeof contentBlock?.thinking === 'string' &&
-                                    contentBlock.thinking
-                                ) {
-                                    summarySeen = true;
-                                    emittedAnyContentThisToolAttempt = true;
-                                    yield { type: 'reasoning_summary_delta', content: contentBlock.thinking };
-                                }
-
-                                continue;
-                            }
-
-                            if (eventType === 'content_block_delta') {
-                                const index = getBlockIndex(data.index);
-                                const delta = isRecord(data.delta) ? data.delta : null;
-                                if (index === null || !delta) continue;
-
-                                const deltaType = typeof delta.type === 'string' ? delta.type : '';
-                                if (deltaType === 'text_delta' && typeof delta.text === 'string' && delta.text) {
-                                    const entry = getOrCreateMutableBlock(assistantBlocksByIndex, index, 'text');
-                                    appendStringField(entry.block, 'text', delta.text);
-                                    emittedAnyContentThisToolAttempt = true;
-                                    yield { type: 'answer_delta', content: delta.text };
-                                    continue;
-                                }
-
-                                if (deltaType === 'thinking_delta' && typeof delta.thinking === 'string' && delta.thinking) {
-                                    const entry = getOrCreateMutableBlock(assistantBlocksByIndex, index, 'thinking');
-                                    appendStringField(entry.block, 'thinking', delta.thinking);
-                                    summarySeen = true;
-                                    emittedAnyContentThisToolAttempt = true;
-                                    yield { type: 'reasoning_summary_delta', content: delta.thinking };
-                                    continue;
-                                }
-
-                                if (deltaType === 'input_json_delta' && typeof delta.partial_json === 'string') {
-                                    const entry = getOrCreateMutableBlock(assistantBlocksByIndex, index, 'tool_use');
-                                    entry.toolInputJsonBuffer += delta.partial_json;
-                                    continue;
-                                }
-
-                                if (deltaType === 'signature_delta' && typeof delta.signature === 'string' && delta.signature) {
-                                    const entry = getOrCreateMutableBlock(assistantBlocksByIndex, index, 'thinking');
-                                    appendStringField(entry.block, 'signature', delta.signature);
-                                    continue;
-                                }
-
-                                continue;
-                            }
-
-                            if (eventType === 'message_delta') {
-                                const delta = isRecord(data.delta) ? data.delta : null;
-                                if (delta && typeof delta.stop_reason === 'string') {
-                                    stopReason = delta.stop_reason;
-                                }
-                                continue;
-                            }
-
-                            if (eventType === 'message_start') {
-                                const message = isRecord(data.message) ? data.message : null;
-                                if (message && typeof message.stop_reason === 'string') {
-                                    stopReason = message.stop_reason;
-                                }
-                                continue;
-                            }
                         } catch (error) {
                             if (error instanceof Error) {
                                 throw new Error(`Claude stream parse error: ${error.message}`);
                             }
                             throw error;
+                        }
+
+                        const eventType = typeof data.type === 'string' ? data.type : '';
+                        if (!eventType) continue;
+
+                        if (eventType === 'error') {
+                            const errorRecord = isRecord(data.error) ? data.error : null;
+                            const message = errorRecord && typeof errorRecord.message === 'string'
+                                ? errorRecord.message
+                                : 'Unknown Anthropic stream error';
+                            throw new Error(`Claude stream error: ${message}`);
+                        }
+
+                        if (eventType === 'content_block_start') {
+                            const index = getBlockIndex(data.index);
+                            const contentBlock = isRecord(data.content_block) ? cloneRecord(data.content_block) : null;
+                            if (index !== null && contentBlock) {
+                                assistantBlocksByIndex.set(index, {
+                                    block: contentBlock,
+                                    toolInputJsonBuffer: '',
+                                });
+                            }
+
+                            const contentType = contentBlock && typeof contentBlock.type === 'string'
+                                ? contentBlock.type
+                                : '';
+
+                            if (contentType === 'text' && typeof contentBlock?.text === 'string' && contentBlock.text) {
+                                emittedAnyContentThisToolAttempt = true;
+                                yield { type: 'answer_delta', content: contentBlock.text };
+                            }
+
+                            if (
+                                contentType === 'thinking' &&
+                                typeof contentBlock?.thinking === 'string' &&
+                                contentBlock.thinking
+                            ) {
+                                summarySeen = true;
+                                emittedAnyContentThisToolAttempt = true;
+                                yield { type: 'reasoning_summary_delta', content: contentBlock.thinking };
+                            }
+
+                            continue;
+                        }
+
+                        if (eventType === 'content_block_delta') {
+                            const index = getBlockIndex(data.index);
+                            const delta = isRecord(data.delta) ? data.delta : null;
+                            if (index === null || !delta) continue;
+
+                            const deltaType = typeof delta.type === 'string' ? delta.type : '';
+                            if (deltaType === 'text_delta' && typeof delta.text === 'string' && delta.text) {
+                                const entry = getOrCreateMutableBlock(assistantBlocksByIndex, index, 'text');
+                                appendStringField(entry.block, 'text', delta.text);
+                                emittedAnyContentThisToolAttempt = true;
+                                yield { type: 'answer_delta', content: delta.text };
+                                continue;
+                            }
+
+                            if (deltaType === 'thinking_delta' && typeof delta.thinking === 'string' && delta.thinking) {
+                                const entry = getOrCreateMutableBlock(assistantBlocksByIndex, index, 'thinking');
+                                appendStringField(entry.block, 'thinking', delta.thinking);
+                                summarySeen = true;
+                                emittedAnyContentThisToolAttempt = true;
+                                yield { type: 'reasoning_summary_delta', content: delta.thinking };
+                                continue;
+                            }
+
+                            if (deltaType === 'input_json_delta' && typeof delta.partial_json === 'string') {
+                                const entry = getOrCreateMutableBlock(assistantBlocksByIndex, index, 'tool_use');
+                                entry.toolInputJsonBuffer += delta.partial_json;
+                                continue;
+                            }
+
+                            if (deltaType === 'signature_delta' && typeof delta.signature === 'string' && delta.signature) {
+                                const entry = getOrCreateMutableBlock(assistantBlocksByIndex, index, 'thinking');
+                                appendStringField(entry.block, 'signature', delta.signature);
+                                continue;
+                            }
+
+                            continue;
+                        }
+
+                        if (eventType === 'message_delta') {
+                            const delta = isRecord(data.delta) ? data.delta : null;
+                            if (delta && typeof delta.stop_reason === 'string') {
+                                stopReason = delta.stop_reason;
+                            }
+                            continue;
+                        }
+
+                        if (eventType === 'message_start') {
+                            const message = isRecord(data.message) ? data.message : null;
+                            if (message && typeof message.stop_reason === 'string') {
+                                stopReason = message.stop_reason;
+                            }
+                            continue;
                         }
                     }
                 }

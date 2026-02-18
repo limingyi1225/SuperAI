@@ -9,11 +9,11 @@ interface SettingsModalProps {
     onClose: () => void;
     initialDefaults: string[];
     onSave: (newDefaults: string[]) => void;
-    currentTheme: 'light' | 'dark';
-    onToggleTheme: () => void;
+    currentThemeMode: 'light' | 'dark' | 'auto';
+    onThemeChange: (themeMode: 'light' | 'dark' | 'auto') => void;
 }
 
-export default function SettingsModal({ isOpen, onClose, initialDefaults, onSave, currentTheme, onToggleTheme }: SettingsModalProps) {
+export default function SettingsModal({ isOpen, onClose, initialDefaults, onSave, currentThemeMode, onThemeChange }: SettingsModalProps) {
     const [selected, setSelected] = useState<string[]>(initialDefaults);
 
     const toggleModel = (modelId: string) => {
@@ -52,8 +52,8 @@ export default function SettingsModal({ isOpen, onClose, initialDefaults, onSave
                         <h3 className={styles.sectionTitle}>Appearance</h3>
                         <div className={styles.themeToggleWrapper}>
                             <button
-                                className={`${styles.themeOption} ${currentTheme === 'light' ? styles.active : ''}`}
-                                onClick={() => currentTheme === 'dark' && onToggleTheme()}
+                                className={`${styles.themeOption} ${currentThemeMode === 'light' ? styles.active : ''}`}
+                                onClick={() => onThemeChange('light')}
                             >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
                                     <circle cx="12" cy="12" r="5" />
@@ -62,13 +62,23 @@ export default function SettingsModal({ isOpen, onClose, initialDefaults, onSave
                                 Light
                             </button>
                             <button
-                                className={`${styles.themeOption} ${currentTheme === 'dark' ? styles.active : ''}`}
-                                onClick={() => currentTheme === 'light' && onToggleTheme()}
+                                className={`${styles.themeOption} ${currentThemeMode === 'dark' ? styles.active : ''}`}
+                                onClick={() => onThemeChange('dark')}
                             >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
                                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                                 </svg>
                                 Dark
+                            </button>
+                            <button
+                                className={`${styles.themeOption} ${currentThemeMode === 'auto' ? styles.active : ''}`}
+                                onClick={() => onThemeChange('auto')}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                    <circle cx="12" cy="12" r="9" />
+                                    <path d="M12 7v6l4 2" />
+                                </svg>
+                                Auto
                             </button>
                         </div>
                     </div>

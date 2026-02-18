@@ -1,7 +1,15 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
-import { TierId, TIER_LABELS, AVAILABLE_MODELS, REASONING_TIERS } from '@/lib/models';
+import { TierId, TIER_LABELS, REASONING_TIERS, AVAILABLE_MODELS } from '@/lib/models';
+import {
+    ProviderId,
+    PROVIDER_MODEL_SLIDERS,
+    SLIDER_PROVIDER_ORDER,
+    ensureAtLeastOneProviderModelSelection,
+    getProviderModelSelectionMap,
+    setProviderModelOrOff,
+} from '@/lib/customModelSliders';
 import styles from './ReasoningTierSelector.module.css';
 
 interface ReasoningTierSelectorProps {
@@ -41,12 +49,8 @@ function TierIcon({ tier }: { tier: TierId }) {
     );
 }
 
-function CheckIcon() {
-    return (
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.checkIcon}>
-            <path d="M3.5 8.5l3 3 6-6.5" />
-        </svg>
-    );
+function isSameSelection(a: string[], b: string[]): boolean {
+    return a.length === b.length && a.every((modelId, index) => modelId === b[index]);
 }
 
 function TierTooltip({ tier }: { tier: TierId }) {
@@ -70,7 +74,7 @@ function TierTooltip({ tier }: { tier: TierId }) {
     );
 }
 
-export default function ReasoningTierSelector({
+function ReasoningTierSelector({
     activeTier,
     onTierChange,
     customModels,
@@ -80,13 +84,23 @@ export default function ReasoningTierSelector({
     const activeIndex = TIERS.indexOf(activeTier);
     const [panelOpen, setPanelOpen] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
+    const providerSelection = getProviderModelSelectionMap(customModels);
 
-    // Open panel when custom is selected, close when switching away
+    // Toggle panel when custom is clicked; close when switching away
     const handleTierClick = (tier: TierId) => {
         if (disabled) return;
         onTierChange(tier);
         if (tier === 'custom') {
-            setPanelOpen(true);
+            // Toggle: if already on custom, flip panel open/closed
+            if (activeTier === 'custom') {
+                setPanelOpen(prev => !prev);
+            } else {
+                setPanelOpen(true);
+            }
+            const normalizedSelection = ensureAtLeastOneProviderModelSelection(customModels);
+            if (!isSameSelection(customModels, normalizedSelection)) {
+                onCustomModelsChange(normalizedSelection);
+            }
         } else {
             setPanelOpen(false);
         }
@@ -104,12 +118,8 @@ export default function ReasoningTierSelector({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [panelOpen]);
 
-    const toggleModel = (modelId: string) => {
-        const next = customModels.includes(modelId)
-            ? customModels.filter(id => id !== modelId)
-            : [...customModels, modelId];
-        // Don't allow deselecting everything
-        if (next.length === 0) return;
+    const handleProviderSelectionChange = (provider: ProviderId, modelId: string | null) => {
+        const next = setProviderModelOrOff(customModels, provider, modelId);
         onCustomModelsChange(next);
     };
 
@@ -146,26 +156,75 @@ export default function ReasoningTierSelector({
             {/* Inline custom model picker */}
             {panelOpen && activeTier === 'custom' && (
                 <div className={styles.customPanel}>
-                    {AVAILABLE_MODELS.map((model) => {
-                        const selected = customModels.includes(model.id);
-                        return (
-                            <button
-                                key={model.id}
-                                className={`${styles.modelItem} ${selected ? styles.modelSelected : ''}`}
-                                onClick={() => toggleModel(model.id)}
-                            >
-                                <div className={`${styles.modelCheck} ${selected ? styles.checked : ''}`}>
-                                    {selected && <CheckIcon />}
+                    <div className={styles.customPanelHeader}>
+                        <span className={styles.customPanelTitle}>Custom Models</span>
+                        <span className={styles.customPanelHint}>Choose 1-3 models</span>
+                    </div>
+
+                    <div className={styles.providerList}>
+                        {SLIDER_PROVIDER_ORDER.map((provider) => {
+                            const slider = PROVIDER_MODEL_SLIDERS[provider];
+                            const selectedModelId = providerSelection[provider] || null;
+                            const selectedStep = selectedModelId
+                                ? slider.steps.find(step => step.modelId === selectedModelId)
+                                : null;
+                            const options = [
+                                { modelId: null, label: 'Off' },
+                                ...slider.steps.map(step => ({
+                                    modelId: step.modelId,
+                                    label: step.label === 'Medium' ? 'Med' : step.label,
+                                })),
+                            ];
+                            const activeOptionIndex = options.findIndex(o => o.modelId === selectedModelId);
+
+                            return (
+                                <div
+                                    key={provider}
+                                    className={`${styles.providerCard} ${!selectedStep ? styles.providerCardInactive : ''}`}
+                                >
+                                    <div className={styles.providerHeader}>
+                                        <span className={styles.providerName}>{slider.vendorLabel}</span>
+                                        <span className={styles.providerValue}>{selectedStep?.label || 'Off'}</span>
+                                    </div>
+
+                                    <div
+                                        className={styles.segmentedControl}
+                                        role="radiogroup"
+                                        aria-label={`${slider.vendorLabel} level`}
+                                    >
+                                        {/* Sliding pill indicator */}
+                                        <div
+                                            className={styles.segmentIndicator}
+                                            style={{
+                                                width: `calc(100% / ${options.length})`,
+                                                transform: `translateX(${activeOptionIndex * 100}%)`,
+                                            }}
+                                        />
+                                        {options.map((option) => {
+                                            const isSelected = option.modelId === selectedModelId;
+                                            return (
+                                                <button
+                                                    key={option.modelId ?? `${provider}-off`}
+                                                    type="button"
+                                                    className={`${styles.segmentButton} ${isSelected ? styles.segmentButtonActive : ''}`}
+                                                    onClick={() => handleProviderSelectionChange(provider, option.modelId)}
+                                                    role="radio"
+                                                    aria-checked={isSelected}
+                                                    aria-label={`${slider.vendorLabel} ${option.label}`}
+                                                >
+                                                    <span className={styles.segmentLabel}>{option.label}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                                <div className={styles.modelInfo}>
-                                    <span className={styles.modelName}>{model.name}</span>
-                                    <span className={styles.modelDesc}>{model.description}</span>
-                                </div>
-                            </button>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
             )}
         </div>
     );
 }
+
+export default React.memo(ReasoningTierSelector);
