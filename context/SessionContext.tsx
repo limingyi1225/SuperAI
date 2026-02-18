@@ -45,8 +45,6 @@ interface SessionContextType {
     deleteSession: (id: string) => void;
     addQuestion: (question: Omit<Question, 'id' | 'timestamp'>, sessionId?: string) => string;
     updateAnswer: (questionId: string, modelId: string, update: Partial<ModelAnswer>, sessionId?: string) => void;
-    appendToAnswer: (questionId: string, modelId: string, content: string, sessionId?: string) => void;
-    appendToReasoningSummary: (questionId: string, modelId: string, content: string, sessionId?: string) => void;
     renameSession: (sessionId: string, newName: string) => void;
     setSessionGeneratingTitle: (sessionId: string, isGenerating: boolean) => void;
 }
@@ -214,52 +212,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }));
     }, [currentSessionId]);
 
-    const appendToAnswer = useCallback((questionId: string, modelId: string, content: string, sessionId?: string) => {
-        setSessions(prev => prev.map(session => {
-            if (session.id === (sessionId || currentSessionId)) {
-                return {
-                    ...session,
-                    questions: session.questions.map(q => {
-                        if (q.id === questionId) {
-                            return {
-                                ...q,
-                                answers: q.answers.map(a =>
-                                    a.modelId === modelId ? { ...a, content: a.content + content } : a
-                                ),
-                            };
-                        }
-                        return q;
-                    }),
-                };
-            }
-            return session;
-        }));
-    }, [currentSessionId]);
-
-    const appendToReasoningSummary = useCallback((questionId: string, modelId: string, content: string, sessionId?: string) => {
-        setSessions(prev => prev.map(session => {
-            if (session.id === (sessionId || currentSessionId)) {
-                return {
-                    ...session,
-                    questions: session.questions.map(q => {
-                        if (q.id === questionId) {
-                            return {
-                                ...q,
-                                answers: q.answers.map(a =>
-                                    a.modelId === modelId
-                                        ? { ...a, reasoningSummary: (a.reasoningSummary || '') + content }
-                                        : a
-                                ),
-                            };
-                        }
-                        return q;
-                    }),
-                };
-            }
-            return session;
-        }));
-    }, [currentSessionId]);
-
     const renameSession = useCallback((sessionId: string, newName: string) => {
         setSessions(prev => prev.map(session =>
             session.id === sessionId ? { ...session, name: newName } : session
@@ -281,8 +233,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         deleteSession,
         addQuestion,
         updateAnswer,
-        appendToAnswer,
-        appendToReasoningSummary,
         renameSession,
         setSessionGeneratingTitle,
     }), [
@@ -294,8 +244,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         deleteSession,
         addQuestion,
         updateAnswer,
-        appendToAnswer,
-        appendToReasoningSummary,
         renameSession,
         setSessionGeneratingTitle,
     ]);
