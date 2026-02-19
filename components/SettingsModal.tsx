@@ -1,42 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
-import { AVAILABLE_MODELS } from '@/lib/models';
+import React from 'react';
 import styles from './SettingsModal.module.css';
 
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    initialDefaults: string[];
-    onSave: (newDefaults: string[]) => void;
     currentThemeMode: 'light' | 'dark' | 'auto';
     onThemeChange: (themeMode: 'light' | 'dark' | 'auto') => void;
 }
 
-const HIDDEN_CUSTOM_TIER_MODEL_IDS = new Set<string>([
-    'claude-opus-4-6-low',
-    'claude-opus-4-6-high',
-]);
-
-export default function SettingsModal({ isOpen, onClose, initialDefaults, onSave, currentThemeMode, onThemeChange }: SettingsModalProps) {
-    const [selected, setSelected] = useState<string[]>(initialDefaults);
-
-    const toggleModel = (modelId: string) => {
-        if (selected.includes(modelId)) {
-            // Prevent deselecting all models
-            if (selected.length > 1) {
-                setSelected(selected.filter(id => id !== modelId));
-            }
-        } else {
-            setSelected([...selected, modelId]);
-        }
-    };
-
-    const handleSave = () => {
-        onSave(selected);
-        onClose();
-    };
-
+export default function SettingsModal({ isOpen, onClose, currentThemeMode, onThemeChange }: SettingsModalProps) {
     if (!isOpen) return null;
 
     return (
@@ -87,43 +61,10 @@ export default function SettingsModal({ isOpen, onClose, initialDefaults, onSave
                             </button>
                         </div>
                     </div>
-
-                    <div className={styles.divider}></div>
-
-                    {/* Default Models Section */}
-                    <div className={styles.section}>
-                        <h3 className={styles.sectionTitle}>Custom Tier</h3>
-                        <p className={styles.modelDesc} style={{ margin: '4px 0 12px 0' }}>
-                            Models used when Custom tier is selected.
-                        </p>
-
-                        <div className={styles.modelList}>
-                            {AVAILABLE_MODELS
-                                .filter(model => !HIDDEN_CUSTOM_TIER_MODEL_IDS.has(model.id))
-                                .map(model => (
-                                <label
-                                    key={model.id}
-                                    className={`${styles.modelItem} ${selected.includes(model.id) ? styles.modelItemSelected : ''}`}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        className={styles.checkbox}
-                                        checked={selected.includes(model.id)}
-                                        onChange={() => toggleModel(model.id)}
-                                    />
-                                    <div className={styles.modelInfo}>
-                                        <span className={styles.modelName}>{model.name}</span>
-                                        <span className={styles.modelDesc}>{model.description}</span>
-                                    </div>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
                 </div>
 
                 <div className={styles.actions}>
-                    <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
-                    <button className={styles.saveBtn} onClick={handleSave}>Save Changes</button>
+                    <button className={styles.closeActionBtn} onClick={onClose}>Close</button>
                 </div>
             </div>
         </div>

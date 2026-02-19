@@ -2,14 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-type PdfParseResult = {
-    text: string;
-};
-
-type PdfParseModuleShape = {
-    default?: (buffer: Buffer) => Promise<PdfParseResult>;
-};
-
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
@@ -26,16 +18,11 @@ export async function POST(request: NextRequest) {
             const mimeType = file.type;
 
             if (mimeType === 'application/pdf') {
-                // Dynamic import pdf-parse to avoid bundling issues
-                const pdfParseModule = (await import('pdf-parse')) as unknown as PdfParseModuleShape;
-                const pdfParse = pdfParseModule.default;
-                if (typeof pdfParse !== 'function') {
-                    throw new Error('Failed to load pdf parser');
-                }
-                const pdfData = await pdfParse(buffer);
+                // Return PDF as base64 for native LLM processing
+                const base64 = buffer.toString('base64');
                 results.push({
                     type: 'pdf',
-                    content: pdfData.text,
+                    content: `data:application/pdf;base64,${base64}`,
                     name: file.name,
                 });
             } else if (mimeType.startsWith('image/')) {

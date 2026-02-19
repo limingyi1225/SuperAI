@@ -32,45 +32,32 @@ function resolveInitialCustom(): string[] {
 export function useModelSelection(): UseModelSelectionReturn {
   const [activeTier, setActiveTier] = useState<TierId>(resolveInitialTier);
   const [customModels, setCustomModels] = useState<string[]>(resolveInitialCustom);
-  const [defaultModels, setDefaultModels] = useState<string[]>(resolveInitialCustom);
-  const [selectedModels, setSelectedModels] = useState<string[]>(() => {
-    const tier = resolveInitialTier();
-    return tier === 'custom' ? resolveInitialCustom() : REASONING_TIERS[tier];
-  });
+
+  // Derive selected models dynamically to guarantee they never desync from activeTier
+  const selectedModels = activeTier === 'custom' ? customModels : REASONING_TIERS[activeTier];
 
   const handleTierChange = useCallback((tier: TierId) => {
     setActiveTier(tier);
     localStorage.setItem('activeTier', tier);
-    if (tier === 'custom') {
-      setSelectedModels(customModels);
-    } else {
-      setSelectedModels(REASONING_TIERS[tier]);
-    }
-  }, [customModels]);
+  }, []);
 
   const handleCustomModelsChange = useCallback((models: string[]) => {
     setCustomModels(models);
-    setSelectedModels(models);
-    setDefaultModels(models);
     localStorage.setItem('customModels', JSON.stringify(models));
   }, []);
 
   const applyNewDefaults = useCallback((newDefaults: string[]) => {
     const sanitized = sanitizeModelIds(newDefaults);
     const resolved = sanitized.length > 0 ? sanitized : FALLBACK_MODELS;
-    setDefaultModels(resolved);
     setCustomModels(resolved);
     localStorage.setItem('customModels', JSON.stringify(resolved));
-    if (activeTier === 'custom') {
-      setSelectedModels(resolved);
-    }
-  }, [activeTier]);
+  }, []);
 
   return {
     selectedModels,
     activeTier,
     customModels,
-    defaultModels,
+    defaultModels: customModels, // Settings modal consumes this and customModels equivalently
     handleTierChange,
     handleCustomModelsChange,
     applyNewDefaults,

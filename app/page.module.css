@@ -387,7 +387,7 @@
     line-height: 1.5;
     resize: none;
     min-height: 24px;
-    max-height: 200px;
+    /* max-height controlled via maxRows prop on TextareaAutosize */
 }
 
 .textarea::placeholder {
@@ -709,9 +709,11 @@
     }
 }
 
-/* Mobile sidebar: limit max-width so it doesn't fill too wide screens */
+/* Narrow sidebar on tablet/mobile */
 @media (max-width: 1024px) {
     .sidebarWrapper {
-        max-width: 300px;
+        width: 280px;
+        max-width: 85vw;
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.28);
     }
 }

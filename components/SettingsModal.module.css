@@ -233,8 +233,8 @@
     background-color: var(--bg-primary);
 }
 
-.cancelBtn {
-    padding: 0.5rem 1rem;
+.closeActionBtn {
+    padding: 0.5rem 1.25rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
     background: transparent;
@@ -245,30 +245,9 @@
     transition: all 0.15s ease;
 }
 
-.cancelBtn:hover {
+.closeActionBtn:hover {
     background-color: var(--bg-elevated);
     color: var(--text-primary);
-}
-
-.saveBtn {
-    padding: 0.5rem 1.25rem;
-    border-radius: var(--radius-md);
-    border: none;
-    background: var(--text-primary);
-    color: var(--bg-primary);
-    font-weight: 500;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.saveBtn:hover {
-    opacity: 0.85;
-    transform: translateY(-1px);
-}
-
-.saveBtn:active {
-    transform: scale(0.97);
 }
 
 @keyframes fadeIn {

@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useSession } from '@/context/SessionContext';
-import LiquidGlass from '@/components/LiquidGlass/LiquidGlass';
 import styles from './SessionSidebar.module.css';
 
 interface SessionSidebarProps {
@@ -47,25 +46,15 @@ export default function SessionSidebar({ onSessionSelect, onOpenSettings }: Sess
     };
 
     return (
-        <LiquidGlass
-            className={styles.sidebar}
-            radius={0}
-            blur={3}
-            depth={6}
-            chromaticAberration={2}
-            strength={80}
-            fallbackBlur={16}
-        >
+        <div className={styles.sidebar}>
             <div className={styles.header}>
                 <h2 className={styles.title}>Sessions</h2>
-                <LiquidGlass className={styles.newBtnGlass} radius={999} blur={2} depth={4} chromaticAberration={1} strength={60} fallbackBlur={10}>
-                    <button className={styles.newBtn} onClick={createSession}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M12 5v14M5 12h14" />
-                        </svg>
-                        New
-                    </button>
-                </LiquidGlass>
+                <button className={styles.newBtn} onClick={createSession}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    New
+                </button>
             </div>
 
             <div className={styles.sessionList}>
@@ -142,7 +131,7 @@ export default function SessionSidebar({ onSessionSelect, onOpenSettings }: Sess
                     <span className={styles.settingsLabel}>Settings</span>
                 </button>
             </div>
-        </LiquidGlass>
+        </div>
     );
 }
 

@@ -10,6 +10,7 @@ export const maxDuration = 900; // 15 minutes timeout
 interface AskRequest {
     question: string;
     images?: string[]; // base64 encoded images
+    pdfs?: string[];   // base64 encoded PDFs (data:application/pdf;base64,...)
     models: string[]; // model IDs to use
     language?: 'Chinese' | 'English'; // Response language
     history?: ConversationTurn[];
@@ -70,6 +71,30 @@ function toClaudeImagePart(image: string): ClaudeContentPart {
     };
 }
 
+function toClaudePdfPart(pdf: string): ClaudeContentPart {
+    const match = pdf.match(/^data:application\/pdf;base64,(.+)$/);
+    const data = match ? match[1] : pdf;
+    return {
+        type: 'document',
+        source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data,
+        },
+    };
+}
+
+function toGeminiPdfPart(pdf: string): GeminiContentPart {
+    const match = pdf.match(/^data:application\/pdf;base64,(.+)$/);
+    const data = match ? match[1] : pdf;
+    return {
+        inlineData: {
+            mimeType: 'application/pdf',
+            data,
+        },
+    };
+}
+
 function sanitizeHistory(history: unknown): ConversationTurn[] {
     if (!Array.isArray(history)) return [];
 
@@ -124,12 +149,12 @@ function sanitizeHistory(history: unknown): ConversationTurn[] {
 export async function POST(request: NextRequest) {
     try {
         const body: AskRequest = await request.json();
-        const { question, images = [], models, language = 'Chinese', history = [] } = body;
+        const { question, images = [], pdfs = [], models, language = 'Chinese', history = [] } = body;
         const sanitizedHistory = sanitizeHistory(history);
 
-        console.log(`[Ask API] Processing request. Language: ${language}, Models: ${models.join(', ')}, Current images: ${images.length}, History turns: ${sanitizedHistory.length}, History turns with images: ${sanitizedHistory.filter(t => t.userImages && t.userImages.length > 0).length}`);
+        console.log(`[Ask API] Processing request. Language: ${language}, Models: ${models.join(', ')}, Current images: ${images.length}, Current PDFs: ${pdfs.length}, History turns: ${sanitizedHistory.length}, History turns with images: ${sanitizedHistory.filter(t => t.userImages && t.userImages.length > 0).length}`);
 
-        if (!question && images.length === 0) {
+        if (!question && images.length === 0 && pdfs.length === 0) {
             return new Response(JSON.stringify({ error: 'No question or images provided' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },
@@ -192,14 +217,19 @@ Output language requirement: respond in English.`
                         // Build OpenAI messages with per-model history.
                         const content: OpenAIContentPart[] = [];
 
+                        // Attach PDFs inline as base64 via input_file with file_data
+                        for (const pdf of pdfs) {
+                            content.push({ type: 'input_file', filename: 'document.pdf', file_data: pdf } as unknown as OpenAIContentPart);
+                        }
+
                         if (question.trim()) {
                             content.push({ type: 'text', text: question });
-                        } else if (images.length > 0) {
+                        } else if (images.length > 0 || pdfs.length > 0) {
                             content.push({
                                 type: 'text',
                                 text: language === 'English'
-                                    ? 'Read the problem from the image and answer in English. Start with final answer, then provide detailed steps.'
-                                    : '请识别图片中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
+                                    ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
+                                    : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
                             });
                         }
 
@@ -314,15 +344,19 @@ Output language requirement: respond in English.`
                         const questionPrefix = language === 'English' ? 'Question:' : '用户题目：';
                         const currentTurnParts: GeminiContentPart[] = [];
 
+                        for (const pdf of pdfs) {
+                            currentTurnParts.push(toGeminiPdfPart(pdf));
+                        }
+
                         if (question.trim()) {
                             currentTurnParts.push({
                                 text: `${questionPrefix}${question}`
                             });
-                        } else if (images.length > 0) {
+                        } else if (images.length > 0 || pdfs.length > 0) {
                             currentTurnParts.push({
                                 text: language === 'English'
-                                    ? 'Read the problem from the image and answer in English. Start with final answer, then provide detailed steps.'
-                                    : '请识别图片中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
+                                    ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
+                                    : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
                             });
                         }
 
@@ -432,14 +466,18 @@ Output language requirement: respond in English.`
                     } else if (modelConfig.provider === 'claude') {
                         const currentContent: ClaudeContentPart[] = [];
 
+                        for (const pdf of pdfs) {
+                            currentContent.push(toClaudePdfPart(pdf));
+                        }
+
                         if (question.trim()) {
                             currentContent.push({ type: 'text', text: question });
-                        } else if (images.length > 0) {
+                        } else if (images.length > 0 || pdfs.length > 0) {
                             currentContent.push({
                                 type: 'text',
                                 text: language === 'English'
-                                    ? 'Read the problem from the image and answer in English. Start with final answer, then provide detailed steps.'
-                                    : '请识别图片中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
+                                    ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
+                                    : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
                             });
                         }
 

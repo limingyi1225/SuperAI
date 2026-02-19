@@ -10,12 +10,13 @@ export interface OpenAIMessage {
 }
 
 export interface OpenAIContentPart {
-    type: 'text' | 'image_url';
+    type: string;
     text?: string;
     image_url?: {
         url: string;
         detail?: 'low' | 'high' | 'auto';
     };
+    [key: string]: unknown;
 }
 
 export interface OpenAIStreamEvent {
@@ -240,6 +241,12 @@ export async function* streamOpenAIResponse(
                                     ? { type: 'output_text', text: imageUrl }
                                     : { type: 'input_image', image_url: imageUrl }
                             );
+                            continue;
+                        }
+
+                        // Pass through input_file and other Responses API-specific part types as-is
+                        if (part.type === 'input_file') {
+                            content.push(part as unknown as Record<string, unknown>);
                         }
                     }
                 } else {

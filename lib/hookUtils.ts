@@ -52,9 +52,10 @@ export function buildQuestionText(questionText: string, questionFiles: UploadedF
   const segments = [questionText];
 
   for (const file of questionFiles) {
-    if (file.type === 'pdf' || file.type === 'text') {
+    if (file.type === 'text') {
       segments.push(file.content);
     }
+    // PDFs are sent natively to LLM providers as base64 documents, not as text
   }
 
   return segments.filter(Boolean).join('\n\n');

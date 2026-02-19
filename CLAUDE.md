@@ -42,7 +42,7 @@ tests/                     # *.test.mjs using Node built-in test runner
 
 **Model IDs via env vars**: `gpt-5.2-low/high/pro` resolve through `OPENAI_MODEL_LOW/HIGH/PRO`. Claude models via `CLAUDE_MODEL_OPUS/SONNET`. Gemini via `GEMINI_MODEL`.
 
-**Tool fallback chains**: Each provider tries full tools → search only → no tools. Set `*_FORCE_DISABLE_TOOLS=true` to skip entirely.
+**Tool fallback chains**: Each provider tries full tools → search only → no tools. Set `OPENAI_FORCE_DISABLE_TOOLS=true` or `GEMINI_FORCE_DISABLE_TOOLS=true` to skip tools entirely (OpenAI and Gemini only).
 
 **Reasoning extraction differs per provider**:
 - OpenAI: `response.reasoning_summary_*` events
@@ -90,7 +90,7 @@ AUTH_REALM=IsabbY
 ## Common Modifications
 
 - **Add reasoning tier**: Update `REASONING_TIERS` in `lib/models.ts`
-- **Add provider tool**: Update `buildTools()` in the relevant `lib/*.ts`
+- **Add provider tool**: Update tool array construction in the relevant `lib/*.ts` (e.g. `buildClaudeToolAttemptSets()` in claude.ts, inline arrays in openai.ts/gemini.ts)
 - **Change history limit**: Update `MAX_HISTORY_TURNS` in `lib/hookUtils.ts`
 - **New component**: Create in `components/`, import in `app/page.tsx`
 - **Adjust effort mapping**: Update effort resolution in `lib/openai.ts`, `lib/claude.ts`
@@ -101,6 +101,6 @@ AUTH_REALM=IsabbY
 - `/liquid glass/` subdirectory is an unused Vite experiment — ignore it
 - `middleware.ts` Basic Auth applies to all routes including API; disable in dev via `AUTH_ENABLED=false`
 - `lib/claude.ts` uses raw `fetch()` to the Anthropic API (not the SDK), unlike OpenAI/Gemini which use npm packages
-- Claude `pause_turn` auto-resumes up to 5 times (`CLAUDE_TOOL_PAUSE_TURN_MAX`)
+- Claude `pause_turn` auto-resumes up to 5 times (`CLAUDE_TOOL_PAUSE_TURN_MAX`, default 5)
 - `next.config.ts` uses `output: 'standalone'` — required for `deploy.sh` PM2 deployment
 - No `npm test` script configured; run test files directly with `node`

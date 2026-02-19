@@ -23,7 +23,6 @@ export interface QuestionSubmitOptions {
   responseLanguage: 'Chinese' | 'English';
   getText: () => string;
   clearText: () => void;
-  resetTextareaHeight: () => void;
   messagesAreaRef: RefObject<HTMLDivElement | null>;
   files: UploadedFile[];
   clearFiles: () => void;
@@ -59,8 +58,9 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
 
   // Cleanup all abort controllers on unmount
   useEffect(() => {
+    const controllers = abortControllersRef.current;
     return () => {
-      abortControllersRef.current.forEach(ctrl => ctrl.abort());
+      controllers.forEach(ctrl => ctrl.abort());
     };
   }, []);
 
@@ -139,6 +139,32 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
     );
     let hasRequestedTitle = false;
 
+    // Throttle updateAnswer writes to SessionContext: flush at most every 250 ms per model.
+    // The live setAnswers() still fires on every token for smooth UI.
+    const FLUSH_INTERVAL_MS = 250;
+    const lastFlushTime: Record<string, number> = {};
+    const flushTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+    const scheduleFlush = (modelId: string) => {
+      if (flushTimers[modelId]) return;
+      const elapsed = Date.now() - (lastFlushTime[modelId] ?? 0);
+      const delay = Math.max(0, FLUSH_INTERVAL_MS - elapsed);
+      flushTimers[modelId] = setTimeout(() => {
+        delete flushTimers[modelId];
+        lastFlushTime[modelId] = Date.now();
+        if (modelStatus[modelId] === 'streaming') {
+          updateAnswer(questionId, modelId, {
+            content: answerByModel[modelId] || '',
+            reasoningSummary: reasoningByModel[modelId] || '',
+          }, execSessionId);
+        }
+      }, delay);
+    };
+
+    const cancelFlushTimers = () => {
+      for (const timer of Object.values(flushTimers)) clearTimeout(timer);
+    };
+
     const requestTitleFromAnswer = (answerText: string) => {
       if (!isFirstInteraction || hasRequestedTitle || !execSessionId) return;
       const sourceText = answerText.trim();
@@ -166,6 +192,7 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
 
     try {
       const images = submittedFiles.filter(f => f.type === 'image').map(f => f.content);
+      const pdfs = submittedFiles.filter(f => f.type === 'pdf').map(f => f.content);
       const fullText = buildQuestionText(submittedText, submittedFiles);
 
       const response = await fetch('/api/ask', {
@@ -174,6 +201,7 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
         body: JSON.stringify({
           question: fullText,
           images,
+          pdfs,
           models: selectedModels,
           language: responseLanguage,
           history,
@@ -212,7 +240,7 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
                 setAnswers(prev => prev.map(a =>
                   a.modelId === data.modelId ? { ...a, reasoningSummary: '' } : a
                 ));
-                updateAnswer(questionId, data.modelId, { reasoningSummary: '' }, execSessionId);
+                // Batched — no immediate updateAnswer
               } else if (data.type === 'reasoning_summary_chunk' && data.content) {
                 setAnswers(prev => prev.map(a =>
                   a.modelId === data.modelId
@@ -220,8 +248,9 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
                     : a
                 ));
                 reasoningByModel[data.modelId] = (reasoningByModel[data.modelId] || '') + data.content;
+                scheduleFlush(data.modelId);
               } else if (data.type === 'reasoning_summary_done') {
-                // Marker event for UI state sync, no-op for now.
+                // Marker event — no-op.
               } else if (data.type === 'chunk') {
                 // Notification check for slow responses (>10s)
                 if (!notifiedModels.has(data.modelId)) {
@@ -239,8 +268,11 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
                   a.modelId === data.modelId ? { ...a, content: a.content + data.content } : a
                 ));
                 answerByModel[data.modelId] = (answerByModel[data.modelId] || '') + data.content;
+                scheduleFlush(data.modelId);
               } else if (data.type === 'done') {
                 modelStatus[data.modelId] = 'done';
+                clearTimeout(flushTimers[data.modelId]);
+                delete flushTimers[data.modelId];
                 setAnswers(prev => prev.map(a =>
                   a.modelId === data.modelId ? { ...a, status: 'done' } : a
                 ));
@@ -252,6 +284,8 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
                 requestTitleFromAnswer(answerByModel[data.modelId] || '');
               } else if (data.type === 'error') {
                 modelStatus[data.modelId] = 'error';
+                clearTimeout(flushTimers[data.modelId]);
+                delete flushTimers[data.modelId];
                 setAnswers(prev => prev.map(a =>
                   a.modelId === data.modelId ? { ...a, status: 'error', error: data.error } : a
                 ));
@@ -270,6 +304,7 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
       }
 
     } catch (error) {
+      cancelFlushTimers();
       if (error instanceof DOMException && error.name === 'AbortError') {
         setAnswers(prev => prev.map(a =>
           a.status === 'streaming' || a.status === 'pending'
@@ -311,7 +346,7 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    const { getText, clearText, resetTextareaHeight, files, clearFiles, messagesAreaRef, selectedModels } = optsRef.current;
+    const { getText, clearText, files, clearFiles, messagesAreaRef, selectedModels } = optsRef.current;
     const text = getText();
 
     if ((!text.trim() && files.length === 0) || selectedModels.length === 0) return;
@@ -321,7 +356,6 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
 
     clearText();
     clearFiles();
-    resetTextareaHeight();
 
     if (document.getElementById('fileInput')) {
       (document.getElementById('fileInput') as HTMLInputElement).value = '';

@@ -112,7 +112,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (persistTimerRef.current !== null) {
             window.clearTimeout(persistTimerRef.current);
         }
-        const toSave = sessions.map(s => ({ ...s, isGeneratingTitle: false }));
+        // Strip large binary content (base64 images/PDFs) before persisting to avoid
+        // blowing the 5-10 MB localStorage budget. Only metadata (name, type, id) is
+        // kept so history can show what files were attached without storing the raw data.
+        const toSave = sessions.map(s => ({
+            ...s,
+            isGeneratingTitle: false,
+            questions: s.questions.map(q => ({
+                ...q,
+                files: q.files.map(f =>
+                    f.type === 'image' || f.type === 'pdf'
+                        ? { id: f.id, type: f.type, name: f.name, content: '', preview: undefined }
+                        : f
+                ),
+            })),
+        }));
         persistTimerRef.current = window.setTimeout(() => {
             try {
                 localStorage.setItem(SESSIONS_KEY, JSON.stringify(toSave));

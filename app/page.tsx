@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import TextareaAutosize from 'react-textarea-autosize';
 import { SessionProvider, useSession } from '@/context/SessionContext';
 import SessionSidebar from '@/components/SessionSidebar';
 import SettingsModal from '@/components/SettingsModal';
 import AnswerPanel from '@/components/AnswerPanel';
 import ReasoningTierSelector from '@/components/ReasoningTierSelector';
-import LiquidGlass from '@/components/LiquidGlass/LiquidGlass';
 import styles from './page.module.css';
 
 import { useTheme } from '@/hooks/useTheme';
@@ -26,15 +26,14 @@ function MainContent() {
   const [text, setText] = useState('');
   const [responseLanguage, setResponseLanguage] = useState<'Chinese' | 'English'>(() => {
     if (typeof window === 'undefined') return 'Chinese';
-    const saved = localStorage.getItem('responseLanguage');
-    return saved === 'English' ? 'English' : 'Chinese';
+    return localStorage.getItem('responseLanguage') === 'English' ? 'English' : 'Chinese';
   });
+
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Refs
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesAreaRef = useRef<HTMLDivElement>(null);
   // Stable text accessor — avoids adding `text` to submitQuestion deps
   const textRef = useRef(text);
@@ -46,22 +45,9 @@ function MainContent() {
   const { files, isUploading, processFiles, removeFile, handlePaste, clearFiles } = useFileUpload(showToast);
   const { isDragging, dragHandlers } = useDragDrop(processFiles);
   const {
-    selectedModels, activeTier, customModels, defaultModels,
-    handleTierChange, handleCustomModelsChange, applyNewDefaults,
+    selectedModels, activeTier, customModels,
+    handleTierChange, handleCustomModelsChange,
   } = useModelSelection();
-
-  const adjustTextareaHeight = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
-  }, []);
-
-  const resetTextareaHeight = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = 'auto';
-  }, []);
 
   const {
     currentQuestionId, answers, isCurrentSessionGenerating,
@@ -71,7 +57,6 @@ function MainContent() {
     responseLanguage,
     getText: () => textRef.current,
     clearText: () => setText(''),
-    resetTextareaHeight,
     messagesAreaRef,
     files,
     clearFiles,
@@ -97,8 +82,7 @@ function MainContent() {
     setText('');
     clearFiles();
     resetForNewSession();
-    resetTextareaHeight();
-  }, [currentSessionId, clearFiles, resetForNewSession, resetTextareaHeight]);
+  }, [currentSessionId, clearFiles, resetForNewSession]);
 
   // Escape key to close image preview modal
   useEffect(() => {
@@ -111,10 +95,6 @@ function MainContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [previewImage]);
 
-  const handleSaveSettings = (newDefaults: string[]) => {
-    applyNewDefaults(newDefaults);
-    showToast('Custom tier saved', 'success');
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.nativeEvent.isComposing) return;
@@ -134,9 +114,9 @@ function MainContent() {
     >
       {/* Toast notification */}
       {toast && (
-        <LiquidGlass className={styles.toast} data-kind={toast.kind} data-dismissing={toast.dismissing ? 'true' : undefined} role="status" aria-live="polite" radius={9999} blur={3} depth={8} fallbackBlur={10}>
+        <div className={styles.toast} data-kind={toast.kind} data-dismissing={toast.dismissing ? 'true' : undefined} role="status" aria-live="polite">
           {toast.message}
-        </LiquidGlass>
+        </div>
       )}
 
       {/* Mobile menu button */}
@@ -200,8 +180,6 @@ function MainContent() {
         <SettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
-          initialDefaults={defaultModels}
-          onSave={handleSaveSettings}
           currentThemeMode={themeMode}
           onThemeChange={handleThemeModeChange}
         />
@@ -269,7 +247,7 @@ function MainContent() {
 
         {/* Bottom Input Area */}
         <div className={styles.inputArea}>
-          <LiquidGlass className={styles.inputContainer} radius={50} blur={2} depth={10} chromaticAberration={5} fallbackBlur={20}>
+          <div className={styles.inputContainer}>
             {/* Attached files preview */}
             {files.length > 0 && (
               <div className={styles.attachedFiles}>
@@ -325,19 +303,16 @@ function MainContent() {
                 }}
               />
 
-              <textarea
-                ref={textareaRef}
+              <TextareaAutosize
                 className={styles.textarea}
                 placeholder="Ask anything"
                 value={text}
-                onChange={e => {
-                  setText(e.target.value);
-                  adjustTextareaHeight();
-                }}
+                onChange={e => setText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
                 disabled={isCurrentSessionGenerating}
-                rows={1}
+                minRows={1}
+                maxRows={8}
               />
 
               {/* Language Selector */}
@@ -375,7 +350,7 @@ function MainContent() {
                 </button>
               )}
             </div>
-          </LiquidGlass>
+          </div>
           <p className={styles.inputHint}>Enter 发送 · Shift+Enter 换行 · 支持拖放图片 / PDF</p>
         </div>
       </main>
