@@ -28,9 +28,10 @@ export const PROVIDER_MODEL_SLIDERS: Record<ProviderId, ProviderSliderConfig> = 
     gemini: {
         provider: 'gemini',
         vendorLabel: 'Gemini',
-        defaultModelId: 'gemini-3-pro',
+        defaultModelId: 'gemini-3.1-pro-medium',
         steps: [
-            { modelId: 'gemini-3-pro', label: 'On' },
+            { modelId: 'gemini-3.1-pro-medium', label: 'Medium' },
+            { modelId: 'gemini-3.1-pro', label: 'High' },
         ],
     },
     claude: {

@@ -187,10 +187,9 @@ export async function* streamGeminiResponse(
             generateConfig.config.tools = tools;
         }
 
-        // Keep existing budget behavior for thinking-capable models.
-        if (modelName.includes('flash-thinking') || modelName.includes('2.5')) {
-            generateConfig.config.thinkingConfig.thinkingBudget = effort === 'high' ? 8192 : effort === 'medium' ? 4096 : 1024;
-        }
+        // Apply thinking budget to all models that support thoughts.
+        // Without a cap, models like gemini-3.1-pro-preview can think for 90s+, causing ResponseAborted.
+        generateConfig.config.thinkingConfig.thinkingBudget = effort === 'high' ? 8192 : effort === 'medium' ? 4096 : 1024;
 
         try {
             const response = await genAI.models.generateContentStream(generateConfig);

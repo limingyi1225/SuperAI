@@ -13,6 +13,11 @@ interface SettingsModalProps {
     onThemeChange: (themeMode: 'light' | 'dark' | 'auto') => void;
 }
 
+const HIDDEN_CUSTOM_TIER_MODEL_IDS = new Set<string>([
+    'claude-opus-4-6-low',
+    'claude-opus-4-6-high',
+]);
+
 export default function SettingsModal({ isOpen, onClose, initialDefaults, onSave, currentThemeMode, onThemeChange }: SettingsModalProps) {
     const [selected, setSelected] = useState<string[]>(initialDefaults);
 
@@ -93,7 +98,9 @@ export default function SettingsModal({ isOpen, onClose, initialDefaults, onSave
                         </p>
 
                         <div className={styles.modelList}>
-                            {AVAILABLE_MODELS.map(model => (
+                            {AVAILABLE_MODELS
+                                .filter(model => !HIDDEN_CUSTOM_TIER_MODEL_IDS.has(model.id))
+                                .map(model => (
                                 <label
                                     key={model.id}
                                     className={`${styles.modelItem} ${selected.includes(model.id) ? styles.modelItemSelected : ''}`}
