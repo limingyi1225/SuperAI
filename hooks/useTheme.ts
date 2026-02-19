@@ -14,25 +14,27 @@ export interface UseThemeReturn {
   handleThemeModeChange: (nextMode: ThemeMode) => void;
 }
 
+function resolveInitialThemeMode(): ThemeMode {
+  if (typeof window === 'undefined') return 'auto';
+  const saved = localStorage.getItem('themeMode');
+  if (saved === 'light' || saved === 'dark' || saved === 'auto') return saved;
+  const legacy = localStorage.getItem('theme') as 'dark' | 'light' | null;
+  return legacy ?? 'auto';
+}
+
 export function useTheme(): UseThemeReturn {
-  const [themeMode, setThemeMode] = useState<ThemeMode>('auto');
-  const [, setTheme] = useState<'dark' | 'light'>('dark');
+  const [themeMode, setThemeMode] = useState<ThemeMode>(resolveInitialThemeMode);
+  const [, setTheme] = useState<'dark' | 'light'>(() => {
+    const mode = resolveInitialThemeMode();
+    return mode === 'auto' ? resolveTimeBasedTheme() : mode;
+  });
 
-  // Hydrate from localStorage on mount
+  // Apply theme to document on mount (cannot run during SSR)
   useEffect(() => {
-    const savedThemeMode = localStorage.getItem('themeMode');
-    const legacyTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
-
-    const initialThemeMode: ThemeMode = (
-      savedThemeMode === 'light' || savedThemeMode === 'dark' || savedThemeMode === 'auto'
-        ? savedThemeMode
-        : (legacyTheme ?? 'auto')
-    );
-
-    const initialTheme = initialThemeMode === 'auto' ? resolveTimeBasedTheme() : initialThemeMode;
-    setThemeMode(initialThemeMode);
-    setTheme(initialTheme);
-    applyThemeToDocument(initialTheme);
+    const mode = themeMode;
+    const theme = mode === 'auto' ? resolveTimeBasedTheme() : mode;
+    applyThemeToDocument(theme);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // In auto mode, re-evaluate every minute in case local hour crosses threshold

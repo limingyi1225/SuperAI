@@ -21,7 +21,18 @@ interface LiquidGlassProps extends HTMLAttributes<HTMLDivElement> {
   disabled?: boolean;
 }
 
-/** Detect if the browser supports SVG filter references in backdrop-filter (Chromium-only) */
+/** Detect if the browser is Safari (where SVG backdrop-filter performs well natively) */
+function useIsSafari(): boolean {
+  const [isSafari] = useState<boolean>(() => {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent;
+    // Safari: has "Safari" but NOT "Chrome" / "Chromium" / "Edg" / "OPR"
+    return /Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR/.test(ua);
+  });
+  return isSafari;
+}
+
+/** Detect if the browser supports SVG filter references in backdrop-filter */
 function useSvgBackdropFilter(): boolean {
   const [supported] = useState<boolean>(() => {
     if (typeof CSS === 'undefined' || typeof CSS.supports !== 'function') {
@@ -65,10 +76,16 @@ export default function LiquidGlass({
   const ref = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState<{ w: number; h: number } | null>(null);
   const supported = useSvgBackdropFilter();
+  const isSafari = useIsSafari();
   const isLight = useIsLightTheme();
 
-  // Track element size via ResizeObserver, rounded to nearest 10px
+  // Only use the expensive SVG displacement filter on Safari where it performs well.
+  // Chrome supports it but the GPU compositing is too slow for interactive use.
+  const useDisplacement = isSafari && supported && !disabled;
+
+  // Track element size via ResizeObserver, rounded to nearest 10px (only needed for SVG filter)
   useEffect(() => {
+    if (!useDisplacement) return;
     const el = ref.current;
     if (!el) return;
 
@@ -87,16 +104,16 @@ export default function LiquidGlass({
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [useDisplacement]);
 
   // In light mode, scale down chromatic aberration to avoid garish rainbow fringing
   const effectiveCA = isLight
     ? Math.round(chromaticAberration / 3)
     : chromaticAberration;
 
-  // Memoize the SVG filter data URI
+  // Memoize the SVG filter data URI (Safari only)
   const filterUrl = useMemo(() => {
-    if (!dimensions || disabled || !supported) return null;
+    if (!useDisplacement || !dimensions) return null;
     return getDisplacementFilter({
       width: dimensions.w,
       height: dimensions.h,
@@ -105,16 +122,24 @@ export default function LiquidGlass({
       strength,
       chromaticAberration: effectiveCA,
     });
-  }, [dimensions, radius, depth, strength, effectiveCA, disabled, supported]);
+  }, [useDisplacement, dimensions, radius, depth, strength, effectiveCA]);
 
   // Build the backdrop-filter value
-  // Light mode: subtle brightness/saturate + slight contrast for realistic glass refraction
-  // Dark mode: original values that look great on dark backgrounds
-  const backdropFilter = filterUrl
-    ? isLight
+  // Safari: full displacement filter with brightness/saturate adjustments
+  // Chrome/others: lightweight pure blur for smooth performance
+  let backdropFilter: string;
+  if (filterUrl) {
+    // Safari path: full SVG displacement + blur
+    backdropFilter = isLight
       ? `blur(${blur / 2}px) url('${filterUrl}') blur(${blur}px) brightness(1.02) saturate(1.1) contrast(1.03)`
-      : `blur(${blur / 2}px) url('${filterUrl}') blur(${blur}px) brightness(1.1) saturate(1.5)`
-    : `blur(${fallbackBlur}px)`;
+      : `blur(${blur / 2}px) url('${filterUrl}') blur(${blur}px) brightness(1.1) saturate(1.5)`;
+  } else {
+    // Chrome/other path: simple blur + subtle brightness/saturate (no SVG filter)
+    const blurAmount = disabled ? 0 : fallbackBlur;
+    backdropFilter = isLight
+      ? `blur(${blurAmount}px) brightness(1.02) saturate(1.1)`
+      : `blur(${blurAmount}px) brightness(1.1) saturate(1.3)`;
+  }
 
   const mergedStyle: CSSProperties = {
     ...style,

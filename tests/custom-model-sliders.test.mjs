@@ -12,14 +12,14 @@ import {
 test('normalizeProviderModelSelection returns selected providers in stable order', () => {
     const selection = normalizeProviderModelSelection([
         'gpt-5.2-high',
-        'gemini-3-pro-low',
+        'gemini-3.1-pro-medium',
         'gpt-5.2-pro',
         'claude-opus-4-6',
     ]);
 
     assert.deepEqual(selection, [
         'gpt-5.2-high',
-        'gemini-3-pro-low',
+        'gemini-3.1-pro-medium',
         'claude-opus-4-6',
     ]);
 });
@@ -38,27 +38,27 @@ test('ensureAtLeastOneProviderModelSelection falls back to openai default', () =
 
 test('setProviderModelSelection swaps only the targeted provider', () => {
     const next = setProviderModelSelection(
-        ['gpt-5.2', 'gemini-3-pro'],
+        ['gpt-5.2', 'gemini-3.1-pro-medium'],
         'openai',
         'gpt-5.2-pro'
     );
 
-    assert.deepEqual(next, ['gpt-5.2-pro', 'gemini-3-pro']);
+    assert.deepEqual(next, ['gpt-5.2-pro', 'gemini-3.1-pro-medium']);
 });
 
 test('setProviderModelSelection ignores invalid model ids', () => {
     const next = setProviderModelSelection(
-        ['gpt-5.2', 'gemini-3-pro'],
+        ['gpt-5.2', 'gemini-3.1-pro-medium'],
         'gemini',
         'gpt-5.2-pro'
     );
 
-    assert.deepEqual(next, ['gpt-5.2', 'gemini-3-pro']);
+    assert.deepEqual(next, ['gpt-5.2', 'gemini-3.1-pro-medium']);
 });
 
 test('toggleProviderSelection can disable providers but keeps at least one', () => {
     const onlyOpenAI = toggleProviderSelection(
-        ['gpt-5.2', 'gemini-3-pro'],
+        ['gpt-5.2', 'gemini-3.1-pro-medium'],
         'gemini'
     );
     assert.deepEqual(onlyOpenAI, ['gpt-5.2']);
@@ -77,12 +77,12 @@ test('toggleProviderSelection can disable providers but keeps at least one', () 
 });
 
 test('setProviderModelOrOff supports off option while keeping at least one model', () => {
-    const oneModel = setProviderModelOrOff(['gpt-5.2', 'gemini-3-pro'], 'gemini', null);
+    const oneModel = setProviderModelOrOff(['gpt-5.2', 'gemini-3.1-pro-medium'], 'gemini', null);
     assert.deepEqual(oneModel, ['gpt-5.2']);
 
     const stillOne = setProviderModelOrOff(oneModel, 'openai', null);
     assert.deepEqual(stillOne, ['gpt-5.2']);
 
-    const reenable = setProviderModelOrOff(stillOne, 'claude', 'claude-opus-4-6-high');
-    assert.deepEqual(reenable, ['gpt-5.2', 'claude-opus-4-6-high']);
+    const reenable = setProviderModelOrOff(stillOne, 'claude', 'claude-opus-4-6');
+    assert.deepEqual(reenable, ['gpt-5.2', 'claude-opus-4-6']);
 });

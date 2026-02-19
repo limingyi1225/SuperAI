@@ -266,26 +266,21 @@
     background: rgba(30, 30, 30, 0.5);
     border-radius: var(--radius-xl);
     overflow: visible;
-    /* Inset glow: white edge highlight + subtle blue/purple chromatic inner glow */
+    /* Simplified inset glow: edge highlight + soft inner glow (2 layers instead of 5) */
     box-shadow:
         var(--shadow-sm),
         inset 0 0 0 1px rgba(255, 255, 255, 0.12),
-        inset 1px 1px 6px 0px rgba(90, 200, 250, 0.15),
-        inset -1px -1px 6px 0px rgba(175, 82, 222, 0.12),
-        inset 0 0 18px 0px rgba(255, 255, 255, 0.06);
+        inset 0 0 12px 0px rgba(255, 255, 255, 0.08);
 }
 
 :global([data-theme="light"]) .inputContainer {
     background: rgba(228, 228, 235, 0.45);
     border: 1px solid rgba(0, 0, 0, 0.07);
-    /* Neutral glass specular: white edge highlights + very subtle prismatic tint */
+    /* Simplified glass specular (2 layers instead of 6) */
     box-shadow:
         var(--shadow-sm),
         inset 0 0 0 1px rgba(255, 255, 255, 0.7),
-        inset 0 1px 4px 0px rgba(255, 255, 255, 0.5),
-        inset 0 -1px 3px 0px rgba(255, 255, 255, 0.25),
-        inset 1px 1px 6px 0px rgba(180, 200, 220, 0.08),
-        inset -1px -1px 6px 0px rgba(200, 180, 210, 0.06);
+        inset 0 1px 4px 0px rgba(255, 255, 255, 0.4);
 }
 
 

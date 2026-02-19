@@ -24,7 +24,11 @@ function MainContent() {
 
   // Local UI state
   const [text, setText] = useState('');
-  const [responseLanguage, setResponseLanguage] = useState<'Chinese' | 'English'>('Chinese');
+  const [responseLanguage, setResponseLanguage] = useState<'Chinese' | 'English'>(() => {
+    if (typeof window === 'undefined') return 'Chinese';
+    const saved = localStorage.getItem('responseLanguage');
+    return saved === 'English' ? 'English' : 'Chinese';
+  });
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -34,7 +38,7 @@ function MainContent() {
   const messagesAreaRef = useRef<HTMLDivElement>(null);
   // Stable text accessor — avoids adding `text` to submitQuestion deps
   const textRef = useRef(text);
-  textRef.current = text;
+  useEffect(() => { textRef.current = text; }, [text]);
 
   // Custom hooks (in dependency order)
   const { themeMode, handleThemeModeChange } = useTheme();
@@ -87,16 +91,9 @@ function MainContent() {
     }
   }, []);
 
-  // Hydrate response language from localStorage
-  useEffect(() => {
-    const savedLang = localStorage.getItem('responseLanguage') as 'Chinese' | 'English' | null;
-    if (savedLang === 'Chinese' || savedLang === 'English') {
-      setResponseLanguage(savedLang);
-    }
-  }, []);
-
   // Reset local state when switching sessions
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset on session change
     setText('');
     clearFiles();
     resetForNewSession();

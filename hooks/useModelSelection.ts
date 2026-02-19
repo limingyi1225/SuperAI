@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { REASONING_TIERS, TierId } from '@/lib/models';
 import { FALLBACK_MODELS, sanitizeModelIds, resolveInitialModels } from '@/lib/hookUtils';
 
@@ -14,30 +14,29 @@ export interface UseModelSelectionReturn {
   applyNewDefaults: (newDefaults: string[]) => void;
 }
 
+/** Read localStorage safely (returns null during SSR) */
+function readStorage(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(key);
+}
+
+function resolveInitialTier(): TierId {
+  const saved = readStorage('activeTier');
+  return saved && ['fast', 'deep', 'custom'].includes(saved) ? saved as TierId : 'fast';
+}
+
+function resolveInitialCustom(): string[] {
+  return resolveInitialModels(readStorage('customModels') ?? '');
+}
+
 export function useModelSelection(): UseModelSelectionReturn {
-  const [selectedModels, setSelectedModels] = useState<string[]>(FALLBACK_MODELS);
-  const [activeTier, setActiveTier] = useState<TierId>('fast');
-  const [customModels, setCustomModels] = useState<string[]>(FALLBACK_MODELS);
-  const [defaultModels, setDefaultModels] = useState<string[]>(FALLBACK_MODELS);
-
-  // Hydrate tier and custom models from localStorage on mount
-  useEffect(() => {
-    const savedTier = localStorage.getItem('activeTier') as TierId | null;
-    const tier = savedTier && ['fast', 'deep', 'custom'].includes(savedTier) ? savedTier : 'fast';
-
-    const savedCustom = localStorage.getItem('customModels');
-    const resolvedCustom = resolveInitialModels(savedCustom ?? '');
-
-    setCustomModels(resolvedCustom);
-    setDefaultModels(resolvedCustom);
-    setActiveTier(tier);
-
-    if (tier === 'custom') {
-      setSelectedModels(resolvedCustom);
-    } else {
-      setSelectedModels(REASONING_TIERS[tier]);
-    }
-  }, []);
+  const [activeTier, setActiveTier] = useState<TierId>(resolveInitialTier);
+  const [customModels, setCustomModels] = useState<string[]>(resolveInitialCustom);
+  const [defaultModels, setDefaultModels] = useState<string[]>(resolveInitialCustom);
+  const [selectedModels, setSelectedModels] = useState<string[]>(() => {
+    const tier = resolveInitialTier();
+    return tier === 'custom' ? resolveInitialCustom() : REASONING_TIERS[tier];
+  });
 
   const handleTierChange = useCallback((tier: TierId) => {
     setActiveTier(tier);
