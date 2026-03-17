@@ -40,7 +40,7 @@ tests/                     # *.test.mjs using Node built-in test runner
 
 **SSE Streaming**: `/api/ask` uses `TransformStream` to stream per-model responses in parallel. Event types: `start`, `chunk`, `reasoning_summary_*`, `done`, `error`, `complete`.
 
-**Model IDs via env vars**: `gpt-5.2-low/high/pro` resolve through `OPENAI_MODEL_LOW/HIGH/PRO`. Claude models via `CLAUDE_MODEL_OPUS/SONNET`. Gemini via `GEMINI_MODEL`.
+**Model IDs via env vars**: `gpt-5.4-low/high/pro` resolve through `OPENAI_MODEL_LOW/HIGH/PRO`. Claude models via `CLAUDE_MODEL_OPUS/SONNET`. Gemini via `GEMINI_MODEL`.
 
 **Tool fallback chains**: Each provider tries full tools → search only → no tools. Set `OPENAI_FORCE_DISABLE_TOOLS=true` or `GEMINI_FORCE_DISABLE_TOOLS=true` to skip tools entirely (OpenAI and Gemini only).
 
@@ -64,9 +64,9 @@ GOOGLE_AI_API_KEY=
 ANTHROPIC_API_KEY=
 
 # Model overrides
-OPENAI_MODEL_LOW=gpt-5.2
-OPENAI_MODEL_HIGH=gpt-5.2
-OPENAI_MODEL_PRO=gpt-5.2-pro
+OPENAI_MODEL_LOW=gpt-5.4
+OPENAI_MODEL_HIGH=gpt-5.4
+OPENAI_MODEL_PRO=gpt-5.4-pro
 GEMINI_MODEL=gemini-3.1-pro-preview  # frontend model ID is gemini-3.1-pro; fallback default is gemini-2.0-flash
 CLAUDE_MODEL_OPUS=claude-opus-4-6
 CLAUDE_MODEL_SONNET=claude-sonnet-4-6

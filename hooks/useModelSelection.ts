@@ -22,7 +22,7 @@ function readStorage(key: string): string | null {
 
 function resolveInitialTier(): TierId {
   const saved = readStorage('activeTier');
-  return saved && ['fast', 'deep', 'custom'].includes(saved) ? saved as TierId : 'fast';
+  return saved && ['deep', 'custom'].includes(saved) ? saved as TierId : 'deep';
 }
 
 function resolveInitialCustom(): string[] {

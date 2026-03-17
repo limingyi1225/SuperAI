@@ -20,7 +20,7 @@ interface ReasoningTierSelectorProps {
     disabled?: boolean;
 }
 
-const TIERS: TierId[] = ['fast', 'deep', 'custom'];
+const TIERS: TierId[] = ['deep', 'custom'];
 
 function TierIcon({ tier }: { tier: TierId }) {
     if (tier === 'fast') {

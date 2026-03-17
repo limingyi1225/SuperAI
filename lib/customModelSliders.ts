@@ -1,4 +1,4 @@
-export type ProviderId = 'openai' | 'gemini' | 'claude';
+export type ProviderId = 'openai' | 'gemini' | 'claude' | 'grok';
 
 export interface ProviderSliderOption {
     modelId: string;
@@ -12,17 +12,17 @@ export interface ProviderSliderConfig {
     steps: ProviderSliderOption[];
 }
 
-export const SLIDER_PROVIDER_ORDER: ProviderId[] = ['openai', 'gemini', 'claude'];
+export const SLIDER_PROVIDER_ORDER: ProviderId[] = ['openai', 'gemini', 'claude', 'grok'];
 
 export const PROVIDER_MODEL_SLIDERS: Record<ProviderId, ProviderSliderConfig> = {
     openai: {
         provider: 'openai',
         vendorLabel: 'GPT',
-        defaultModelId: 'gpt-5.2',
+        defaultModelId: 'gpt-5.4',
         steps: [
-            { modelId: 'gpt-5.2', label: 'Medium' },
-            { modelId: 'gpt-5.2-high', label: 'High' },
-            { modelId: 'gpt-5.2-pro', label: 'Pro' },
+            { modelId: 'gpt-5.4', label: 'Medium' },
+            { modelId: 'gpt-5.4-high', label: 'High' },
+            { modelId: 'gpt-5.4-pro', label: 'Pro' },
         ],
     },
     gemini: {
@@ -41,6 +41,15 @@ export const PROVIDER_MODEL_SLIDERS: Record<ProviderId, ProviderSliderConfig> = 
         steps: [
             { modelId: 'claude-sonnet-4-6', label: 'Sonnet' },
             { modelId: 'claude-opus-4-6', label: 'Opus' },
+        ],
+    },
+    grok: {
+        provider: 'grok',
+        vendorLabel: 'Grok',
+        defaultModelId: 'grok-4.20-4',
+        steps: [
+            { modelId: 'grok-4.20-4', label: '4' },
+            { modelId: 'grok-4.20-16', label: '16' },
         ],
     },
 };

@@ -5,7 +5,7 @@
 
 import { AVAILABLE_MODELS, REASONING_TIERS } from './models.ts';
 
-export const FALLBACK_MODELS = REASONING_TIERS.fast;
+export const FALLBACK_MODELS = REASONING_TIERS.deep;
 const VALID_MODEL_IDS = new Set(AVAILABLE_MODELS.map(model => model.id));
 
 // ----- useModelSelection utils -----

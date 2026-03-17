@@ -74,11 +74,11 @@ function shouldEnableCodeInterpreter(requestedModel: string, resolvedModelName: 
     if (!codeInterpreterEnabled) return false;
 
     const requested = requestedModel.toLowerCase();
-    if (requested === 'gpt-5.2-pro') return false;
-    if (requested === 'gpt-5.2-low' || requested === 'gpt-5.2' || requested === 'gpt-5.2-high') return true;
+    if (requested === 'gpt-5.4-pro') return false;
+    if (requested === 'gpt-5.4-low' || requested === 'gpt-5.4' || requested === 'gpt-5.4-high') return true;
 
     const resolved = resolvedModelName.toLowerCase();
-    return resolved.includes('gpt-5.2') && !resolved.includes('gpt-5.2-pro');
+    return resolved.includes('gpt-5.4') && !resolved.includes('gpt-5.4-pro');
 }
 
 function buildOpenAITools(
@@ -115,20 +115,20 @@ function isToolCompatibilityError(status: number, errorBody: string): boolean {
     return hasToolHint && hasCompatibilityHint;
 }
 
-function isNonProGpt52Model(requestedModel: string, resolvedModelName: string): boolean {
+function isNonProGpt54Model(requestedModel: string, resolvedModelName: string): boolean {
     const requested = requestedModel.toLowerCase();
-    if (requested === 'gpt-5.2-pro') return false;
-    if (requested === 'gpt-5.2-low' || requested === 'gpt-5.2' || requested === 'gpt-5.2-high') return true;
+    if (requested === 'gpt-5.4-pro') return false;
+    if (requested === 'gpt-5.4-low' || requested === 'gpt-5.4' || requested === 'gpt-5.4-high') return true;
 
     const resolved = resolvedModelName.toLowerCase();
-    return resolved.includes('gpt-5.2') && !resolved.includes('pro');
+    return resolved.includes('gpt-5.4') && !resolved.includes('pro');
 }
 
 function resolveResponsesOutputControls(
     requestedModel: string,
     resolvedModelName: string
 ): { summary: OpenAIReasoningSummaryMode; verbosity: OpenAITextVerbosity } {
-    if (isNonProGpt52Model(requestedModel, resolvedModelName)) {
+    if (isNonProGpt54Model(requestedModel, resolvedModelName)) {
         return { summary: 'concise', verbosity: 'medium' };
     }
 
@@ -199,13 +199,13 @@ export async function* streamOpenAIResponse(
     effort: 'low' | 'medium' | 'high' = 'high'
 ): AsyncGenerator<OpenAIStreamEvent> {
     let modelName: string;
-    if (model === 'gpt-5.2-low') {
-        modelName = process.env.OPENAI_MODEL_LOW || process.env.OPENAI_MODEL || 'gpt-5.2';
-    } else if (model === 'gpt-5.2-high') {
-        modelName = process.env.OPENAI_MODEL_HIGH || 'gpt-5.2';
-    } else if (model === 'gpt-5.2-pro') {
-        // "GPT 5.2 (Pro)" display tier maps to a dedicated backend model.
-        modelName = process.env.OPENAI_MODEL_PRO || 'gpt-5.2-pro';
+    if (model === 'gpt-5.4-low') {
+        modelName = process.env.OPENAI_MODEL_LOW || process.env.OPENAI_MODEL || 'gpt-5.4';
+    } else if (model === 'gpt-5.4-high') {
+        modelName = process.env.OPENAI_MODEL_HIGH || 'gpt-5.4';
+    } else if (model === 'gpt-5.4-pro') {
+        // "GPT 5.4 (Pro)" display tier maps to a dedicated backend model.
+        modelName = process.env.OPENAI_MODEL_PRO || 'gpt-5.4-pro';
     } else if (model === 'gpt-5-nano') {
         modelName = 'gpt-5-nano';
     } else {

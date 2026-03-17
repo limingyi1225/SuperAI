@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { streamOpenAIResponse, OpenAIContentPart, OpenAIMessage } from '@/lib/openai';
 import { streamGeminiResponse, GeminiContentPart, GeminiConversationContent } from '@/lib/gemini';
 import { streamClaudeResponse, ClaudeContentPart, ClaudeMessage } from '@/lib/claude';
+import { streamGrokResponse, GrokMessage, GrokContentPart } from '@/lib/grok';
 import { getModelById } from '@/lib/models';
 
 export const runtime = 'nodejs';
@@ -580,6 +581,70 @@ Output language requirement: respond in English.`
                                     modelId
                                 })}\n\n`)
                             );
+                        }
+                    } else if (modelConfig.provider === 'grok') {
+                        const grokMessages: GrokMessage[] = [];
+
+                        for (const turn of sanitizedHistory) {
+                            const userContent: GrokContentPart[] = [
+                                { type: 'text', text: turn.userText }
+                            ];
+
+                            for (const image of turn.userImages ?? []) {
+                                userContent.push({
+                                    type: 'image_url',
+                                    image_url: {
+                                        url: image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`,
+                                        detail: 'high',
+                                    },
+                                });
+                            }
+
+                            grokMessages.push({ role: 'user', content: userContent });
+
+                            const assistantText = turn.modelAnswers?.[modelId];
+                            if (assistantText && assistantText.trim()) {
+                                grokMessages.push({ role: 'assistant', content: assistantText });
+                            }
+                        }
+
+                        const currentContent: GrokContentPart[] = [];
+
+                        if (question.trim()) {
+                            currentContent.push({ type: 'text', text: question });
+                        } else if (images.length > 0 || pdfs.length > 0) {
+                            currentContent.push({
+                                type: 'text',
+                                text: language === 'English'
+                                    ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
+                                    : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
+                            });
+                        }
+
+                        for (const img of images) {
+                            currentContent.push({
+                                type: 'image_url',
+                                image_url: {
+                                    url: img.startsWith('data:') ? img : `data:image/jpeg;base64,${img}`,
+                                    detail: 'high',
+                                },
+                            });
+                        }
+
+                        if (currentContent.length > 0) {
+                            grokMessages.push({ role: 'user', content: currentContent });
+                        }
+
+                        for await (const event of streamGrokResponse(grokMessages, modelId, systemPrompt)) {
+                            if (event.type === 'answer_delta' && event.content) {
+                                await writer.write(
+                                    encoder.encode(`data: ${JSON.stringify({
+                                        type: 'chunk',
+                                        modelId,
+                                        content: event.content
+                                    })}\n\n`)
+                                );
+                            }
                         }
                     }
 
