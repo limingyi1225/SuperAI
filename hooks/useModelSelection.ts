@@ -20,30 +20,28 @@ function readStorage(key: string): string | null {
   return localStorage.getItem(key);
 }
 
-function resolveInitialTier(): TierId {
-  const saved = readStorage('activeTier');
-  return saved && ['deep', 'custom'].includes(saved) ? saved as TierId : 'deep';
-}
-
-function resolveInitialCustom(): string[] {
-  return resolveInitialModels(readStorage('customModels') ?? '');
-}
-
 export function useModelSelection(): UseModelSelectionReturn {
-  const [activeTier, setActiveTier] = useState<TierId>(resolveInitialTier);
-  const [customModels, setCustomModels] = useState<string[]>(resolveInitialCustom);
+  const [activeTier, setActiveTier] = useState<TierId>('deep');
+  const [customModels, setCustomModels] = useState<string[]>(FALLBACK_MODELS);
 
   // Derive selected models dynamically to guarantee they never desync from activeTier
   const selectedModels = activeTier === 'custom' ? customModels : REASONING_TIERS[activeTier];
 
+  // Hydrate from localStorage after mount to avoid SSR mismatch
   useEffect(() => {
-    const raw = readStorage('customModels');
-    if (!raw) return;
+    const savedTier = readStorage('activeTier');
+    if (savedTier && ['deep', 'custom'].includes(savedTier)) {
+      setActiveTier(savedTier as TierId);
+    }
 
-    const resolved = resolveInitialModels(raw);
-    const normalizedJson = JSON.stringify(resolved);
-    if (normalizedJson !== raw) {
-      localStorage.setItem('customModels', normalizedJson);
+    const raw = readStorage('customModels');
+    if (raw) {
+      const resolved = resolveInitialModels(raw);
+      setCustomModels(resolved);
+      const normalizedJson = JSON.stringify(resolved);
+      if (normalizedJson !== raw) {
+        localStorage.setItem('customModels', normalizedJson);
+      }
     }
   }, []);
 
