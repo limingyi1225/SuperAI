@@ -1,4 +1,4 @@
-export type ProviderId = 'openai' | 'gemini' | 'claude' | 'grok';
+export type ProviderId = 'openai' | 'gemini' | 'claude' | 'xai';
 
 export interface ProviderSliderOption {
     modelId: string;
@@ -12,7 +12,7 @@ export interface ProviderSliderConfig {
     steps: ProviderSliderOption[];
 }
 
-export const SLIDER_PROVIDER_ORDER: ProviderId[] = ['openai', 'gemini', 'claude', 'grok'];
+export const SLIDER_PROVIDER_ORDER: ProviderId[] = ['openai', 'gemini', 'claude', 'xai'];
 
 export const PROVIDER_MODEL_SLIDERS: Record<ProviderId, ProviderSliderConfig> = {
     openai: {
@@ -43,13 +43,13 @@ export const PROVIDER_MODEL_SLIDERS: Record<ProviderId, ProviderSliderConfig> = 
             { modelId: 'claude-opus-4-6', label: 'Opus' },
         ],
     },
-    grok: {
-        provider: 'grok',
+    xai: {
+        provider: 'xai',
         vendorLabel: 'Grok',
-        defaultModelId: 'grok-4.20-4',
+        defaultModelId: 'grok-4.20-multi-agent-beta-latest',
         steps: [
-            { modelId: 'grok-4.20-4', label: '4' },
-            { modelId: 'grok-4.20-16', label: '16' },
+            { modelId: 'grok-4.20-multi-agent-beta-latest', label: 'Fast' },
+            { modelId: 'grok-4.20-multi-agent-beta-latest-deep', label: 'Deep' },
         ],
     },
 };

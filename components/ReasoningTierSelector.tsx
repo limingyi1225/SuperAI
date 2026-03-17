@@ -81,7 +81,9 @@ function ReasoningTierSelector({
     onCustomModelsChange,
     disabled,
 }: ReasoningTierSelectorProps) {
-    const activeIndex = TIERS.indexOf(activeTier);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const activeIndex = mounted ? TIERS.indexOf(activeTier) : 0;
     const [panelOpen, setPanelOpen] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
     const providerSelection = getProviderModelSelectionMap(customModels);
@@ -138,7 +140,7 @@ function ReasoningTierSelector({
                 {TIERS.map((tier) => (
                     <button
                         key={tier}
-                        className={`${styles.option} ${activeTier === tier ? styles.active : ''}`}
+                        className={`${styles.option} ${mounted && activeTier === tier ? styles.active : ''}`}
                         onClick={() => handleTierClick(tier)}
                         disabled={disabled}
                     >
@@ -158,7 +160,7 @@ function ReasoningTierSelector({
                 <div className={styles.customPanel}>
                     <div className={styles.customPanelHeader}>
                         <span className={styles.customPanelTitle}>Custom Models</span>
-                        <span className={styles.customPanelHint}>Choose 1-3 models</span>
+                        <span className={styles.customPanelHint}>Choose 1-4 models</span>
                     </div>
 
                     <div className={styles.providerList}>

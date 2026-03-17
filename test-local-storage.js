@@ -1,11 +1,11 @@
 let storage = {
   activeTier: 'fast',
-  customModels: '["gpt-5.2", "gpt-5.2-high", "gpt-5.2-pro", "gemini-3.1-pro", "claude-sonnet-4-6"]'
+  customModels: '["gpt-5.4", "gpt-5.4-high", "gpt-5.4-pro", "gemini-3.1-pro", "claude-sonnet-4-6"]'
 };
 
 const REASONING_TIERS = {
-    fast: ['gemini-3.1-pro', 'gpt-5.2', 'claude-sonnet-4-6'],
-    deep: ['gemini-3.1-pro', 'gpt-5.2-high', 'claude-opus-4-6'],
+    fast: ['gemini-3.1-pro', 'gpt-5.4', 'claude-sonnet-4-6'],
+    deep: ['gemini-3.1-pro', 'gpt-5.4-high', 'claude-opus-4-6'],
 };
 
 const FALLBACK_MODELS = REASONING_TIERS.fast;
@@ -36,8 +36,6 @@ function resolveInitialCustom() {
 
 // React useState simulation
 const activeTier = resolveInitialTier();
-const customModels = resolveInitialCustom();
-const defaultModels = resolveInitialCustom();
 const selectedModels = activeTier === 'custom' ? resolveInitialCustom() : REASONING_TIERS[activeTier];
 
 console.log('activeTier:', activeTier);

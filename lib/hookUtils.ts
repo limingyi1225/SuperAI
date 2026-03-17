@@ -3,7 +3,7 @@
  * No React dependencies, no @/ imports — safe to import in Node test runner.
  */
 
-import { AVAILABLE_MODELS, REASONING_TIERS } from './models.ts';
+import { AVAILABLE_MODELS, REASONING_TIERS, normalizeModelId } from './models.ts';
 
 export const FALLBACK_MODELS = REASONING_TIERS.deep;
 const VALID_MODEL_IDS = new Set(AVAILABLE_MODELS.map(model => model.id));
@@ -13,9 +13,11 @@ const VALID_MODEL_IDS = new Set(AVAILABLE_MODELS.map(model => model.id));
 export function sanitizeModelIds(ids: unknown): string[] {
   if (!Array.isArray(ids)) return [];
 
-  const sanitized = ids.filter((id): id is string => (
-    typeof id === 'string' && VALID_MODEL_IDS.has(id)
-  ));
+  const sanitized = ids.flatMap((id) => {
+    if (typeof id !== 'string') return [];
+    const normalizedId = normalizeModelId(id);
+    return VALID_MODEL_IDS.has(normalizedId) ? [normalizedId] : [];
+  });
 
   return Array.from(new Set(sanitized));
 }

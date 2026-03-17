@@ -1,5 +1,3 @@
-const assert = require('assert');
-
 // Simulate React useState local behavior for hydration
 let isClient = false;
 
@@ -14,7 +12,7 @@ function readStorage(k) {
 }
 
 const REASONING_TIERS = {
-  fast: ['gemini-3.1-pro', 'gpt-5.2', 'claude-sonnet-4-6'],
+  fast: ['gemini-3.1-pro', 'gpt-5.4', 'claude-sonnet-4-6'],
   deep: ['deep1', 'deep2', 'deep3']
 };
 
@@ -28,7 +26,7 @@ function resolveInitialCustom() {
   if (!raw) return REASONING_TIERS.fast;
   try {
     return JSON.parse(raw);
-  } catch(e) { return REASONING_TIERS.fast; }
+  } catch { return REASONING_TIERS.fast; }
 }
 
 // Emulate Server Render
@@ -47,4 +45,3 @@ clientState.customModels = resolveInitialCustom();
 clientState.selectedModels = clientState.activeTier === 'custom' ? clientState.customModels : REASONING_TIERS[clientState.activeTier];
 
 console.log("Client initial evaluation:", clientState);
-

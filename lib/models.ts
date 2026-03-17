@@ -1,10 +1,25 @@
 export interface ModelConfig {
     id: string;
     name: string;
-    provider: 'openai' | 'gemini' | 'claude' | 'grok';
+    provider: 'openai' | 'gemini' | 'claude' | 'xai';
     effort: 'low' | 'medium' | 'high' | 'max';
     description: string;
 }
+
+export interface ResolvedRequestedModel {
+    requestedId: string;
+    canonicalId: string;
+    config?: ModelConfig;
+}
+
+const MODEL_ID_ALIASES: Record<string, string> = {
+    'gpt-5.2': 'gpt-5.4',
+    'gpt-5.2-low': 'gpt-5.4',
+    'gpt-5.2-high': 'gpt-5.4-high',
+    'gpt-5.2-pro': 'gpt-5.4-pro',
+    'grok-4.20-multi-agent-experimental-beta-0304': 'grok-4.20-multi-agent-beta-latest',
+    'grok-4.20-multi-agent-experimental-beta-0304-deep': 'grok-4.20-multi-agent-beta-latest-deep',
+};
 
 export const AVAILABLE_MODELS: ModelConfig[] = [
     {
@@ -71,18 +86,18 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
         description: 'Anthropic Claude Sonnet 4.6 with high thinking',
     },
     {
-        id: 'grok-4.20-4',
-        name: 'Grok 4.20 (4 Agents)',
-        provider: 'grok',
-        effort: 'low',
-        description: 'xAI Grok 4.20 with 4 reasoning agents',
+        id: 'grok-4.20-multi-agent-beta-latest',
+        name: 'Grok 4.20 Multi-Agent (Fast)',
+        provider: 'xai',
+        effort: 'medium',
+        description: 'xAI Grok 4.20 multi-agent with medium reasoning effort and web search',
     },
     {
-        id: 'grok-4.20-16',
-        name: 'Grok 4.20 (16 Agents)',
-        provider: 'grok',
+        id: 'grok-4.20-multi-agent-beta-latest-deep',
+        name: 'Grok 4.20 Multi-Agent (Deep)',
+        provider: 'xai',
         effort: 'high',
-        description: 'xAI Grok 4.20 with 16 reasoning agents',
+        description: 'xAI Grok 4.20 multi-agent with high reasoning effort and web search',
     },
 ];
 
@@ -101,4 +116,28 @@ export const TIER_LABELS: Record<TierId, string> = {
 
 export function getModelById(id: string): ModelConfig | undefined {
     return AVAILABLE_MODELS.find(m => m.id === id);
+}
+
+export function normalizeModelId(id: string): string {
+    const trimmed = id.trim();
+    return MODEL_ID_ALIASES[trimmed] || trimmed;
+}
+
+export function resolveRequestedModels(ids: string[]): ResolvedRequestedModel[] {
+    const seenCanonicalIds = new Set<string>();
+    const resolved: ResolvedRequestedModel[] = [];
+
+    for (const requestedId of ids) {
+        const canonicalId = normalizeModelId(requestedId);
+        if (seenCanonicalIds.has(canonicalId)) continue;
+        seenCanonicalIds.add(canonicalId);
+
+        resolved.push({
+            requestedId,
+            canonicalId,
+            config: getModelById(canonicalId),
+        });
+    }
+
+    return resolved;
 }

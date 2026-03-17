@@ -1,9 +1,11 @@
-const { createElement, useState, useCallback, useEffect } = require('react');
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+const { createElement, useState } = require('react');
 const { renderToString } = require('react-dom/server');
 
 // simulate exact environment
 const REASONING_TIERS = {
-    fast: ['gemini-3.1-pro', 'gpt-5.2', 'claude-sonnet-4-6'],
+    fast: ['gemini-3.1-pro', 'gpt-5.4', 'claude-sonnet-4-6'],
     deep: ['deep1']
 };
 
@@ -21,9 +23,9 @@ function resolveInitialCustom(storage) {
 }
 
 function useModelSelectionMock(storage) {
-  const [activeTier, setActiveTier] = useState(() => resolveInitialTier(storage));
-  const [customModels, setCustomModels] = useState(() => resolveInitialCustom(storage));
-  const [selectedModels, setSelectedModels] = useState(() => {
+  const [activeTier] = useState(() => resolveInitialTier(storage));
+  useState(() => resolveInitialCustom(storage));
+  const [selectedModels] = useState(() => {
     const tier = resolveInitialTier(storage);
     return tier === 'custom' ? resolveInitialCustom(storage) : REASONING_TIERS[tier];
   });

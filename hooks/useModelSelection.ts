@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { REASONING_TIERS, TierId } from '@/lib/models';
 import { FALLBACK_MODELS, sanitizeModelIds, resolveInitialModels } from '@/lib/hookUtils';
 
@@ -35,6 +35,17 @@ export function useModelSelection(): UseModelSelectionReturn {
 
   // Derive selected models dynamically to guarantee they never desync from activeTier
   const selectedModels = activeTier === 'custom' ? customModels : REASONING_TIERS[activeTier];
+
+  useEffect(() => {
+    const raw = readStorage('customModels');
+    if (!raw) return;
+
+    const resolved = resolveInitialModels(raw);
+    const normalizedJson = JSON.stringify(resolved);
+    if (normalizedJson !== raw) {
+      localStorage.setItem('customModels', normalizedJson);
+    }
+  }, []);
 
   const handleTierChange = useCallback((tier: TierId) => {
     setActiveTier(tier);

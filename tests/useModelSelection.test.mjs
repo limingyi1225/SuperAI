@@ -31,6 +31,23 @@ test('sanitizeModelIds filters non-string entries', () => {
     assert.deepEqual(result.sort(), ['gemini-3.1-pro', 'gpt-5.4'].sort());
 });
 
+test('sanitizeModelIds normalizes legacy GPT aliases to canonical ids', () => {
+    const result = sanitizeModelIds(['gpt-5.2', 'gpt-5.2-high', 'gpt-5.2-pro']);
+    assert.deepEqual(result, ['gpt-5.4', 'gpt-5.4-high', 'gpt-5.4-pro']);
+});
+
+test('sanitizeModelIds keeps both grok presets', () => {
+    const result = sanitizeModelIds([
+        'grok-4.20-multi-agent-beta-latest',
+        'grok-4.20-multi-agent-beta-latest-deep',
+    ]);
+
+    assert.deepEqual(result, [
+        'grok-4.20-multi-agent-beta-latest',
+        'grok-4.20-multi-agent-beta-latest-deep',
+    ]);
+});
+
 test('resolveInitialModels returns FALLBACK_MODELS for empty string', () => {
     const result = resolveInitialModels('');
     assert.deepEqual(result, FALLBACK_MODELS);
@@ -58,4 +75,27 @@ test('resolveInitialModels filters invalid ids from mixed JSON input', () => {
     assert.ok(result.includes('gemini-3.1-pro'));
     assert.ok(result.includes('gpt-5.4'));
     assert.ok(!result.includes('not-real'));
+});
+
+test('resolveInitialModels migrates legacy GPT ids from localStorage payloads', () => {
+    const json = JSON.stringify(['gemini-3.1-pro', 'gpt-5.2', 'gpt-5.2']);
+    const result = resolveInitialModels(json);
+    assert.deepEqual(result, ['gemini-3.1-pro', 'gpt-5.4']);
+});
+
+test('FALLBACK_MODELS does not include grok (custom only)', () => {
+    assert.ok(!FALLBACK_MODELS.includes('grok-4.20-multi-agent-beta-latest'));
+});
+
+test('resolveInitialModels preserves persisted grok custom selections', () => {
+    const json = JSON.stringify([
+        'gpt-5.4',
+        'grok-4.20-multi-agent-beta-latest-deep',
+    ]);
+    const result = resolveInitialModels(json);
+
+    assert.deepEqual(result, [
+        'gpt-5.4',
+        'grok-4.20-multi-agent-beta-latest-deep',
+    ]);
 });

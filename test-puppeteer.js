@@ -1,4 +1,7 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 const puppeteer = require('puppeteer');
+const fs = require('fs');
 
 (async () => {
   const browser = await puppeteer.launch();
@@ -9,7 +12,7 @@ const puppeteer = require('puppeteer');
       console.log('Upload response status:', response.status());
       try {
         console.log('Upload response body:', await response.text());
-      } catch (e) {
+      } catch {
         console.log('Could not read upload response body');
       }
     }
@@ -22,7 +25,6 @@ const puppeteer = require('puppeteer');
   
   // Create a dummy file and upload it
   const elementHandle = await page.$('input[type="file"]');
-  const fs = require('fs');
   fs.writeFileSync('dummy.jpg', 'dummy content');
   await elementHandle.uploadFile('dummy.jpg');
 

@@ -15,12 +15,14 @@ test('normalizeProviderModelSelection returns selected providers in stable order
         'gemini-3.1-pro-medium',
         'gpt-5.4-pro',
         'claude-opus-4-6',
+        'grok-4.20-multi-agent-beta-latest-deep',
     ]);
 
     assert.deepEqual(selection, [
         'gpt-5.4-high',
         'gemini-3.1-pro-medium',
         'claude-opus-4-6',
+        'grok-4.20-multi-agent-beta-latest-deep',
     ]);
 });
 
@@ -85,4 +87,24 @@ test('setProviderModelOrOff supports off option while keeping at least one model
 
     const reenable = setProviderModelOrOff(stillOne, 'claude', 'claude-opus-4-6');
     assert.deepEqual(reenable, ['gpt-5.4', 'claude-opus-4-6']);
+});
+
+test('toggleProviderSelection enables grok with its default preset', () => {
+    const next = toggleProviderSelection(['gpt-5.4', 'claude-opus-4-6'], 'xai');
+
+    assert.deepEqual(next, [
+        'gpt-5.4',
+        'claude-opus-4-6',
+        PROVIDER_MODEL_SLIDERS.xai.defaultModelId,
+    ]);
+});
+
+test('setProviderModelSelection swaps grok preset without affecting other providers', () => {
+    const next = setProviderModelSelection(
+        ['gpt-5.4', 'grok-4.20-multi-agent-beta-latest'],
+        'xai',
+        'grok-4.20-multi-agent-beta-latest-deep'
+    );
+
+    assert.deepEqual(next, ['gpt-5.4', 'grok-4.20-multi-agent-beta-latest-deep']);
 });

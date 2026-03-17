@@ -1,5 +1,3 @@
-const fs = require('fs');
-
 async function test() {
   const mod = await import('pdf-parse');
   // Check if we can disable the worker
@@ -9,6 +7,6 @@ async function test() {
      const options = { disableWorker: true, workerSrc: 'none' }; // Guessing API options
      const parser = new mod.PDFParse(new Uint8Array(fakePdf), options);
      console.log('Parser instantiated with options', parser.options || parser);
-  } catch(e) { }
+  } catch { }
 }
 test();

@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server';
 import { streamOpenAIResponse, OpenAIContentPart, OpenAIMessage } from '@/lib/openai';
 import { streamGeminiResponse, GeminiContentPart, GeminiConversationContent } from '@/lib/gemini';
 import { streamClaudeResponse, ClaudeContentPart, ClaudeMessage } from '@/lib/claude';
-import { streamGrokResponse, GrokMessage, GrokContentPart } from '@/lib/grok';
-import { getModelById } from '@/lib/models';
+import { buildXAIUserContent, streamXAIResponse, XAIMessage } from '@/lib/xai';
+import { normalizeModelId, resolveRequestedModels } from '@/lib/models';
 
 export const runtime = 'nodejs';
 export const maxDuration = 900; // 15 minutes timeout
@@ -147,13 +147,44 @@ function sanitizeHistory(history: unknown): ConversationTurn[] {
     return sanitized;
 }
 
+function getAssistantTextForModel(
+    modelAnswers: Record<string, string> | undefined,
+    requestedModelId: string,
+    canonicalModelId: string
+): string | undefined {
+    if (!modelAnswers) return undefined;
+
+    const directMatch = modelAnswers[requestedModelId];
+    if (directMatch && directMatch.trim()) return directMatch;
+
+    const canonicalMatch = modelAnswers[canonicalModelId];
+    if (canonicalMatch && canonicalMatch.trim()) return canonicalMatch;
+
+    for (const [modelId, answer] of Object.entries(modelAnswers)) {
+        if (!answer.trim()) continue;
+        if (normalizeModelId(modelId) === canonicalModelId) return answer;
+    }
+
+    return undefined;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const body: AskRequest = await request.json();
-        const { question, images = [], pdfs = [], models, language = 'Chinese', history = [] } = body;
+        const { question, images = [], pdfs = [], models = [], language = 'Chinese', history = [] } = body;
         const sanitizedHistory = sanitizeHistory(history);
+        const requestedModels = Array.isArray(models)
+            ? models.filter((modelId): modelId is string => typeof modelId === 'string')
+            : [];
+        const resolvedModels = resolveRequestedModels(requestedModels);
 
-        console.log(`[Ask API] Processing request. Language: ${language}, Models: ${models.join(', ')}, Current images: ${images.length}, Current PDFs: ${pdfs.length}, History turns: ${sanitizedHistory.length}, History turns with images: ${sanitizedHistory.filter(t => t.userImages && t.userImages.length > 0).length}`);
+        const normalizedAliases = resolvedModels
+            .filter(model => model.requestedId !== model.canonicalId)
+            .map(model => `${model.requestedId}->${model.canonicalId}`);
+
+        console.log(
+            `[Ask API] Processing request. Language: ${language}, Requested Models: ${requestedModels.join(', ')}, Canonical Models: ${resolvedModels.map(model => model.canonicalId).join(', ')}, Aliases: ${normalizedAliases.join(', ') || 'none'}, Current images: ${images.length}, Current PDFs: ${pdfs.length}, History turns: ${sanitizedHistory.length}, History turns with images: ${sanitizedHistory.filter(t => t.userImages && t.userImages.length > 0).length}`
+        );
 
         if (!question && images.length === 0 && pdfs.length === 0) {
             return new Response(JSON.stringify({ error: 'No question or images provided' }), {
@@ -162,7 +193,7 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        if (!models || models.length === 0) {
+        if (requestedModels.length === 0) {
             return new Response(JSON.stringify({ error: 'No models selected' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },
@@ -176,8 +207,7 @@ export async function POST(request: NextRequest) {
 
         // Process each model in parallel
         const processModels = async () => {
-            const modelPromises = models.map(async (modelId) => {
-                const modelConfig = getModelById(modelId);
+            const modelPromises = resolvedModels.map(async ({ requestedId: modelId, canonicalId, config: modelConfig }) => {
                 if (!modelConfig) {
                     await writer.write(
                         encoder.encode(`data: ${JSON.stringify({
@@ -266,7 +296,7 @@ Output language requirement: respond in English.`
                                 content: userContent,
                             });
 
-                            const assistantText = turn.modelAnswers?.[modelId];
+                            const assistantText = getAssistantTextForModel(turn.modelAnswers, modelId, canonicalId);
                             if (assistantText && assistantText.trim()) {
                                 historyMessages.push({
                                     role: 'assistant',
@@ -287,7 +317,7 @@ Output language requirement: respond in English.`
                         let reasoningSummaryStarted = false;
                         let reasoningSummaryDone = false;
 
-                        for await (const event of streamOpenAIResponse(messages, modelId, openAIEffort)) {
+                        for await (const event of streamOpenAIResponse(messages, canonicalId, openAIEffort)) {
                             if (event.type === 'answer_delta' && event.content) {
                                 await writer.write(
                                     encoder.encode(`data: ${JSON.stringify({
@@ -393,7 +423,7 @@ Output language requirement: respond in English.`
                                 parts: userParts,
                             });
 
-                            const assistantText = turn.modelAnswers?.[modelId];
+                            const assistantText = getAssistantTextForModel(turn.modelAnswers, modelId, canonicalId);
                             if (assistantText && assistantText.trim()) {
                                 geminiContents.push({
                                     role: 'model',
@@ -506,7 +536,7 @@ Output language requirement: respond in English.`
                                 });
                             }
 
-                            const assistantText = turn.modelAnswers?.[modelId];
+                            const assistantText = getAssistantTextForModel(turn.modelAnswers, modelId, canonicalId);
                             if (assistantText && assistantText.trim()) {
                                 claudeMessages.push({
                                     role: 'assistant',
@@ -527,7 +557,7 @@ Output language requirement: respond in English.`
 
                         for await (const event of streamClaudeResponse(
                             claudeMessages,
-                            modelId,
+                            canonicalId,
                             modelConfig.effort,
                             systemPrompt
                         )) {
@@ -582,60 +612,56 @@ Output language requirement: respond in English.`
                                 })}\n\n`)
                             );
                         }
-                    } else if (modelConfig.provider === 'grok') {
-                        const grokMessages: GrokMessage[] = [];
+                    } else if (modelConfig.provider === 'xai') {
+                        const xaiMessages: XAIMessage[] = [];
+                        const attachmentFallbackText = language === 'English'
+                            ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
+                            : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。';
 
                         for (const turn of sanitizedHistory) {
-                            const userContent: GrokContentPart[] = [
-                                { type: 'text', text: turn.userText }
-                            ];
+                            const userContent = buildXAIUserContent({
+                                text: turn.userText,
+                                images: turn.userImages ?? [],
+                            });
 
-                            for (const image of turn.userImages ?? []) {
-                                userContent.push({
-                                    type: 'image_url',
-                                    image_url: {
-                                        url: image.startsWith('data:') ? image : `data:image/jpeg;base64,${image}`,
-                                        detail: 'high',
-                                    },
+                            if (userContent) {
+                                xaiMessages.push({
+                                    role: 'user',
+                                    content: userContent,
                                 });
                             }
 
-                            grokMessages.push({ role: 'user', content: userContent });
-
-                            const assistantText = turn.modelAnswers?.[modelId];
+                            const assistantText = getAssistantTextForModel(turn.modelAnswers, modelId, canonicalId);
                             if (assistantText && assistantText.trim()) {
-                                grokMessages.push({ role: 'assistant', content: assistantText });
+                                xaiMessages.push({
+                                    role: 'assistant',
+                                    content: assistantText,
+                                });
                             }
                         }
 
-                        const currentContent: GrokContentPart[] = [];
+                        const currentUserContent = buildXAIUserContent({
+                            text: question,
+                            images,
+                            pdfs,
+                            fallbackText: attachmentFallbackText,
+                        });
 
-                        if (question.trim()) {
-                            currentContent.push({ type: 'text', text: question });
-                        } else if (images.length > 0 || pdfs.length > 0) {
-                            currentContent.push({
-                                type: 'text',
-                                text: language === 'English'
-                                    ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
-                                    : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
+                        if (currentUserContent) {
+                            xaiMessages.push({
+                                role: 'user',
+                                content: currentUserContent,
                             });
                         }
 
-                        for (const img of images) {
-                            currentContent.push({
-                                type: 'image_url',
-                                image_url: {
-                                    url: img.startsWith('data:') ? img : `data:image/jpeg;base64,${img}`,
-                                    detail: 'high',
-                                },
-                            });
-                        }
+                        let reasoningSummaryStarted = false;
+                        let reasoningSummaryDone = false;
 
-                        if (currentContent.length > 0) {
-                            grokMessages.push({ role: 'user', content: currentContent });
-                        }
-
-                        for await (const event of streamGrokResponse(grokMessages, modelId, systemPrompt)) {
+                        for await (const event of streamXAIResponse(
+                            xaiMessages,
+                            canonicalId,
+                            systemPrompt
+                        )) {
                             if (event.type === 'answer_delta' && event.content) {
                                 await writer.write(
                                     encoder.encode(`data: ${JSON.stringify({
@@ -644,7 +670,48 @@ Output language requirement: respond in English.`
                                         content: event.content
                                     })}\n\n`)
                                 );
+                                continue;
                             }
+
+                            if (event.type === 'reasoning_summary_delta' && event.content) {
+                                if (!reasoningSummaryStarted) {
+                                    reasoningSummaryStarted = true;
+                                    await writer.write(
+                                        encoder.encode(`data: ${JSON.stringify({
+                                            type: 'reasoning_summary_start',
+                                            modelId
+                                        })}\n\n`)
+                                    );
+                                }
+
+                                await writer.write(
+                                    encoder.encode(`data: ${JSON.stringify({
+                                        type: 'reasoning_summary_chunk',
+                                        modelId,
+                                        content: event.content
+                                    })}\n\n`)
+                                );
+                                continue;
+                            }
+
+                            if (event.type === 'reasoning_summary_done' && reasoningSummaryStarted && !reasoningSummaryDone) {
+                                reasoningSummaryDone = true;
+                                await writer.write(
+                                    encoder.encode(`data: ${JSON.stringify({
+                                        type: 'reasoning_summary_done',
+                                        modelId
+                                    })}\n\n`)
+                                );
+                            }
+                        }
+
+                        if (reasoningSummaryStarted && !reasoningSummaryDone) {
+                            await writer.write(
+                                encoder.encode(`data: ${JSON.stringify({
+                                    type: 'reasoning_summary_done',
+                                    modelId
+                                })}\n\n`)
+                            );
                         }
                     }
 
