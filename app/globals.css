@@ -7,38 +7,41 @@
 }
 
 :root {
-  /* Apple-inspired color palette */
-  --bg-primary: #000000;
-  --bg-secondary: #0d0d0d;
-  --bg-elevated: #1a1a1a;
-  --bg-hover: #252525;
+  /* ───── Apple-native dark palette ───── */
+  --bg-primary: #0a0a0c;         /* window background */
+  --bg-secondary: #1c1c1e;       /* card / content surface (systemGray6) */
+  --bg-tertiary: #2c2c2e;        /* elevated surface (systemGray5) */
+  --bg-elevated: #2c2c2e;        /* buttons, pills */
+  --bg-hover: #3a3a3c;           /* hover state (systemGray4) */
 
-  /* Accent - Apple blue gradient */
-  --accent-primary: #2997ff;
-  --accent-secondary: #5ac8fa;
-  /* Keep global accent purely blue/cyan (welcome title gradient is separate in page.module.css) */
-  --accent-gradient: linear-gradient(135deg, #2997ff 0%, #5ac8fa 60%, #2997ff 100%);
+  /* Apple system blue (dark) */
+  --accent-primary: #0a84ff;
+  --accent-secondary: #64d2ff;
+  --accent-gradient: linear-gradient(135deg, #0a84ff 0%, #5e5ce6 100%);
+  --focus-ring: rgba(10, 132, 255, 0.65);
 
-  /* Focus ring (disabled by request; keep token for future use) */
-  --focus-ring: rgba(41, 151, 255, 0.95);
+  /* Sidebar blue tint (淡蓝色) */
+  --sidebar-tint: rgba(50, 110, 200, 0.18);
+  --sidebar-tint-strong: rgba(50, 110, 200, 0.28);
 
   /* Text hierarchy */
   --text-primary: #f5f5f7;
-  --text-secondary: #8e8e93;
-  --text-tertiary: #7c7c82;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #74747e;
 
-  /* Borders & Dividers */
+  /* Borders & separators */
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-medium: rgba(255, 255, 255, 0.14);
+  --separator: rgba(255, 255, 255, 0.07);
 
-  /* Shadows */
-  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.12);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 40px rgba(41, 151, 255, 0.15);
+  /* Shadows (Apple-native subtle) */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
 
-  /* Spacing scale */
+  /* Spacing scale (Apple 8px grid) */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -48,56 +51,57 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* Border radius */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  /* Radius (Apple rounded square) */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
 
-  /* Transitions */
   --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-
-  /* Additional colors for light mode compatibility */
-  --bg-tertiary: #252525;
 }
 
-/* Light Mode Theme */
+/* ───── Light mode ───── */
 [data-theme="light"] {
   --bg-primary: #ffffff;
-  --bg-secondary: #f8f8fa;
-  --bg-elevated: #f0f0f5;
-  --bg-hover: #e8e8ed;
-  --bg-tertiary: #ededf0;
+  --bg-secondary: #f5f5f7;
+  --bg-tertiary: #ebebf0;
+  --bg-elevated: #ffffff;
+  --bg-hover: #ebebf0;
+
+  --accent-primary: #007aff;
+  --accent-secondary: #5ac8fa;
+  --accent-gradient: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+  --focus-ring: rgba(0, 122, 255, 0.5);
+
+  --sidebar-tint: rgba(0, 122, 255, 0.06);
+  --sidebar-tint-strong: rgba(0, 122, 255, 0.12);
 
   --text-primary: #1d1d1f;
-  --text-secondary: #636366;
-  --text-tertiary: #8a8a8e;
+  --text-secondary: #515154;
+  --text-tertiary: #86868b;
 
-  --border-subtle: rgba(0, 0, 0, 0.07);
-  --border-medium: rgba(0, 0, 0, 0.12);
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-medium: rgba(0, 0, 0, 0.13);
+  --separator: rgba(60, 60, 67, 0.12);
 
-  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 40px rgba(41, 151, 255, 0.08);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
 }
 
-[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-}
-
-[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
-}
-
+/* ───── Base layout ───── */
 html {
   scroll-behavior: smooth;
   font-size: 16px;
   overflow: hidden;
   height: 100%;
+  /* iOS: prevent bounce/rubber-band on the root */
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -107,15 +111,24 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.011em;
   overflow: hidden;
   height: 100%;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-/* Elegant scrollbar */
+/* Remove blue tap flash on iOS buttons/links */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* ───── Scrollbar (Apple thin) ───── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -123,27 +136,41 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: content-box;
 }
 
-/* Selection */
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  background-clip: content-box;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.32);
+  background-clip: content-box;
+}
+
 ::selection {
-  background: rgba(41, 151, 255, 0.3);
+  background: rgba(10, 132, 255, 0.32);
   color: var(--text-primary);
 }
 
-/* Focus states (intentionally hidden by request) */
+[data-theme="light"] ::selection {
+  background: rgba(0, 122, 255, 0.2);
+}
+
 *:focus,
 *:focus-visible {
   outline: none;
 }
 
-/* Typography utilities */
 .text-gradient {
   background: var(--accent-gradient);
   -webkit-background-clip: text;
@@ -151,7 +178,6 @@ body {
   background-clip: text;
 }
 
-/* Button base reset */
 button {
   font-family: inherit;
   cursor: pointer;
@@ -159,7 +185,6 @@ button {
   background: none;
 }
 
-/* Input base reset */
 input,
 textarea {
   font-family: inherit;
@@ -167,7 +192,6 @@ textarea {
   background: none;
 }
 
-/* Link reset */
 a {
   color: var(--accent-primary);
   text-decoration: none;
@@ -178,14 +202,12 @@ a:hover {
   opacity: 0.8;
 }
 
-/* Code styling */
 pre,
 code {
   font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
   font-size: 0.9em;
 }
 
-/* KaTeX */
 .katex-display {
   margin: var(--space-5) 0;
   overflow-x: auto;
@@ -194,23 +216,29 @@ code {
 }
 
 .katex {
-  font-size: 1.1em;
+  font-size: 1.08em;
 }
 
-/* Override KaTeX error color — show errors in normal text color instead of red */
 .katex .katex-error {
   color: var(--text-primary) !important;
 }
 
-/* Highlight.js theme override */
+/* Code blocks — solid Apple card */
 .hljs {
-  background: var(--bg-elevated) !important;
+  background: var(--bg-tertiary) !important;
   border-radius: var(--radius-md);
-  padding: var(--space-5) !important;
+  padding: var(--space-4) var(--space-5) !important;
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+[data-theme="light"] .hljs {
+  background: var(--bg-secondary) !important;
   color: var(--text-primary);
 }
 
-/* Theme-aware highlight token colors (replaces "github-dark everywhere" mismatch in light mode) */
 .hljs-comment,
 .hljs-quote {
   color: var(--text-tertiary);
@@ -248,15 +276,6 @@ code {
   color: var(--accent-secondary);
 }
 
-[data-theme="light"] .hljs {
-  color: var(--text-primary);
-}
-
-[data-theme="light"] .hljs-comment,
-[data-theme="light"] .hljs-quote {
-  color: var(--text-tertiary);
-}
-
 [data-theme="light"] .hljs-string,
 [data-theme="light"] .hljs-doctag,
 [data-theme="light"] .hljs-regexp {
@@ -269,19 +288,17 @@ code {
   color: #b45309;
 }
 
-/* Smooth animations for all interactive elements.
-   box-shadow & transform are omitted here to avoid expensive GPU compositing
-   on every hover — add them per-component where actually needed. */
 button,
 input,
 textarea,
 select,
 a {
   transition:
-    color 0.2s var(--ease-out),
-    background-color 0.2s var(--ease-out),
-    border-color 0.2s var(--ease-out),
-    opacity 0.2s var(--ease-out);
+    color 0.18s var(--ease-out),
+    background-color 0.18s var(--ease-out),
+    border-color 0.18s var(--ease-out),
+    opacity 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -299,11 +316,27 @@ a {
 }
 
 @media screen and (max-width: 768px) {
-
   input,
   textarea,
   select {
     font-size: 16px !important;
-    /* Prevent iOS zoom */
+  }
+
+  /* Smaller root for tighter vertical rhythm on narrow viewports */
+  .katex {
+    font-size: 1.02em;
+  }
+
+  /* Narrower native scrollbars (rarely visible on iOS but normalize just in case) */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+/* iOS-specific: iOS devices only (not Android). Helps with momentum scroll + input zoom */
+@supports (-webkit-touch-callout: none) {
+  .ios-scroll {
+    -webkit-overflow-scrolling: touch;
   }
 }

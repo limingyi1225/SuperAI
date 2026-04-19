@@ -1,5 +1,7 @@
+/* ReasoningTierSelector — Apple-native segmented control */
+
 .container {
-    padding: 6px 12px 2px;
+    padding: 8px 12px 2px;
     position: relative;
     overflow: visible;
 }
@@ -9,27 +11,54 @@
     pointer-events: none;
 }
 
+/* Outer tier picker track — pill, inset glass */
 .track {
     position: relative;
     display: flex;
-    background: var(--bg-primary);
-    border-radius: var(--radius-md);
+    background: rgba(0, 0, 0, 0.28);
+    border-radius: 999px;
     padding: 3px;
     gap: 0;
     overflow: visible;
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.3),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
-/* Sliding highlight */
+:global([data-theme="light"]) .track {
+    background: rgba(0, 0, 0, 0.06);
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.05),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+/* Sliding highlight — full pill */
 .indicator {
     position: absolute;
     top: 3px;
     left: 3px;
     bottom: 3px;
-    border-radius: calc(var(--radius-md) - 2px);
-    background: var(--bg-hover);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.10);
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
     z-index: 0;
+}
+
+:global([data-theme="light"]) .indicator {
+    background: #ffffff;
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+:global([data-theme="light"]) .indicator {
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .option {
@@ -40,14 +69,14 @@
     align-items: center;
     justify-content: center;
     gap: 5px;
-    padding: 6px 8px;
-    border-radius: calc(var(--radius-md) - 2px);
+    padding: 6px 10px;
+    border-radius: 999px;
     color: var(--text-tertiary);
     font-size: 0.78rem;
     font-weight: 500;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.005em;
     cursor: pointer;
-    transition: color 0.1s linear;
+    transition: color 0.15s ease;
     white-space: nowrap;
     user-select: none;
     -webkit-user-select: none;
@@ -65,15 +94,8 @@
     cursor: not-allowed;
 }
 
-/* Tooltip behavior */
-.option:hover .tooltip {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-    pointer-events: none;
-    transition-delay: 0s;
-}
-
-/* Keyboard: show tooltip on focus (not hover-only) */
+/* Tooltip */
+.option:hover .tooltip,
 .option:focus-visible .tooltip {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
@@ -81,24 +103,23 @@
     transition-delay: 0s;
 }
 
-/* Custom tooltip styling */
 .tooltip {
     position: absolute;
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%) translateY(4px);
     margin-bottom: 8px;
-    background: var(--bg-secondary);
+    background: var(--bg-tertiary);
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
     width: max-content;
-    max-width: 220px;
+    max-width: 240px;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.08s linear, transform 0.08s linear;
+    transition: opacity 0.12s linear, transform 0.12s linear;
     z-index: 100;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-md);
     text-align: left;
     display: flex;
     flex-direction: column;
@@ -106,10 +127,10 @@
 }
 
 .tooltipTitle {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: var(--text-tertiary);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     margin-bottom: 2px;
     font-weight: 600;
 }
@@ -144,24 +165,33 @@
     line-height: 1;
 }
 
-/* ─── Redesigned custom model picker panel ─── */
+/* ───── Custom model picker panel ───── */
 .customPanel {
     position: absolute;
     left: 0;
     right: 0;
-    bottom: calc(100% + 8px);
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
+    bottom: calc(100% + 10px);
+    background: rgba(32, 32, 38, 0.72);
+    border-radius: 18px;
     padding: 14px 14px 10px;
     display: flex;
     flex-direction: column;
     gap: 2px;
     z-index: 220;
     box-shadow:
-        0 -4px 32px rgba(0, 0, 0, 0.25),
-        0 0 0 1px rgba(255, 255, 255, 0.04);
-    animation: panelSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        0 -8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    animation: panelSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:global([data-theme="light"]) .customPanel {
+    background: rgba(248, 249, 252, 0.72);
+    box-shadow:
+        0 -12px 40px rgba(20, 20, 40, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.6);
 }
 
 @keyframes panelSlideIn {
@@ -175,26 +205,18 @@
     }
 }
 
-:global([data-theme="light"]) .customPanel {
-    background: var(--bg-secondary);
-    border-color: var(--border-medium);
-    box-shadow:
-        0 -4px 32px rgba(0, 0, 0, 0.08),
-        0 0 0 1px rgba(0, 0, 0, 0.04);
-}
-
 .customPanelHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 2px 8px;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--separator);
     margin-bottom: 4px;
 }
 
 .customPanelTitle {
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-tertiary);
     font-weight: 600;
@@ -203,7 +225,7 @@
 .customPanelHint {
     font-size: 0.68rem;
     color: var(--text-tertiary);
-    opacity: 0.7;
+    opacity: 0.75;
 }
 
 .providerList {
@@ -212,17 +234,16 @@
     gap: 0;
 }
 
-/* ─── Provider row: label left, full-width segmented control right ─── */
 .providerCard {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 6px 0;
+    padding: 7px 0;
     transition: opacity 0.15s ease;
 }
 
 .providerCard + .providerCard {
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid var(--separator);
 }
 
 .providerCardInactive {
@@ -230,13 +251,13 @@
 }
 
 .providerCardInactive:hover {
-    opacity: 0.65;
+    opacity: 0.7;
 }
 
 .providerHeader {
     display: flex;
     align-items: center;
-    width: 52px;
+    width: 54px;
     flex-shrink: 0;
 }
 
@@ -252,7 +273,7 @@
     display: none;
 }
 
-/* ─── Full-width segmented control with equal buttons ─── */
+/* Per-provider segmented control */
 .segmentedControl {
     position: relative;
     display: flex;
@@ -261,33 +282,40 @@
     flex: 1;
     min-width: 0;
     padding: 2px;
-    border-radius: 10px;
-    background: var(--bg-primary);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.3);
     border: none;
-    box-shadow: none;
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.25),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 :global([data-theme="light"]) .segmentedControl {
-    background: var(--bg-elevated);
+    background: rgba(0, 0, 0, 0.06);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* Sliding pill that animates between options */
 .segmentIndicator {
     position: absolute;
     top: 2px;
     left: 2px;
     bottom: 2px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.11);
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
     z-index: 0;
 }
 
 :global([data-theme="light"]) .segmentIndicator {
-    background: #fff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .segmentButton {
@@ -295,7 +323,7 @@
     z-index: 1;
     flex: 1 1 0;
     min-width: 0;
-    border-radius: 8px;
+    border-radius: 999px;
     border: none;
     background: transparent;
     color: var(--text-tertiary);
@@ -311,11 +339,6 @@
 
 .segmentButtonActive {
     color: var(--text-primary);
-    /* Background is provided by the sliding indicator behind */
-}
-
-.segmentButtonActive:hover {
-    color: var(--text-primary);
 }
 
 .segmentLabel {
@@ -326,39 +349,94 @@
     white-space: nowrap;
 }
 
-/* Responsive */
-@media (max-width: 420px) {
-    .customPanel {
-        padding: 10px;
+@media (max-width: 768px) {
+    .container {
+        padding: 8px 10px 2px;
     }
 
     .option {
-        padding: 6px 6px;
-        gap: 4px;
-        font-size: 0.74rem;
+        padding: 9px 12px;
+        gap: 6px;
+        font-size: 0.84rem;
     }
 
     .icon {
-        width: 13px;
-        height: 13px;
+        width: 15px;
+        height: 15px;
+    }
+
+    /* Hide hover tooltips on touch — they're annoying */
+    .tooltip {
+        display: none;
+    }
+
+    .customPanel {
+        padding: 14px 14px 12px;
+        border-radius: 20px;
     }
 
     .providerCard {
-        gap: 8px;
+        padding: 9px 0;
+        gap: 12px;
     }
 
     .providerHeader {
-        width: 44px;
+        width: 52px;
+    }
+
+    .providerName {
+        font-size: 0.76rem;
+    }
+
+    .segmentButton {
+        padding: 8px 0;
     }
 
     .segmentLabel {
-        font-size: 0.62rem;
+        font-size: 0.72rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .customPanel {
+        padding: 12px 10px 10px;
+    }
+
+    .option {
+        padding: 8px 6px;
+        gap: 4px;
+        font-size: 0.78rem;
+    }
+
+    .icon {
+        width: 14px;
+        height: 14px;
+    }
+
+    .providerCard {
+        gap: 10px;
+    }
+
+    .providerHeader {
+        width: 46px;
+    }
+
+    .providerName {
+        font-size: 0.72rem;
+    }
+
+    .segmentLabel {
+        font-size: 0.66rem;
+    }
+
+    .segmentButton {
+        padding: 7px 0;
     }
 }
 
 @media (max-width: 360px) {
     .segmentLabel {
-        font-size: 0.58rem;
+        font-size: 0.6rem;
     }
 
     .providerHeader {
