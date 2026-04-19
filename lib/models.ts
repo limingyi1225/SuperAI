@@ -19,6 +19,9 @@ const MODEL_ID_ALIASES: Record<string, string> = {
     'gpt-5.2-pro': 'gpt-5.4-pro',
     'grok-4.20-multi-agent-experimental-beta-0304': 'grok-4.20-multi-agent-beta-latest',
     'grok-4.20-multi-agent-experimental-beta-0304-deep': 'grok-4.20-multi-agent-beta-latest-deep',
+    'claude-opus-4-6': 'claude-opus-4-7',
+    'claude-opus-4-6-high': 'claude-opus-4-7-high',
+    'claude-opus-4-6-low': 'claude-opus-4-7-low',
 };
 
 export const AVAILABLE_MODELS: ModelConfig[] = [
@@ -58,25 +61,25 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
         description: 'OpenAI GPT 5.4 Pro tier (routes to dedicated Pro model)',
     },
     {
-        id: 'claude-opus-4-6-low',
-        name: 'Claude Opus 4.6 (Low)',
+        id: 'claude-opus-4-7-low',
+        name: 'Claude Opus 4.7 (Low)',
         provider: 'claude',
         effort: 'low',
-        description: 'Anthropic Claude Opus 4.6 with low thinking',
+        description: 'Anthropic Claude Opus 4.7 with low thinking',
     },
     {
-        id: 'claude-opus-4-6-high',
-        name: 'Claude Opus 4.6 (Medium)',
+        id: 'claude-opus-4-7-high',
+        name: 'Claude Opus 4.7 (Medium)',
         provider: 'claude',
         effort: 'medium',
-        description: 'Anthropic Claude Opus 4.6 with medium thinking',
+        description: 'Anthropic Claude Opus 4.7 with medium thinking',
     },
     {
-        id: 'claude-opus-4-6',
-        name: 'Claude Opus 4.6 (High)',
+        id: 'claude-opus-4-7',
+        name: 'Claude Opus 4.7 (High)',
         provider: 'claude',
         effort: 'high',
-        description: 'Anthropic Claude Opus 4.6 with high thinking',
+        description: 'Anthropic Claude Opus 4.7 with high thinking',
     },
     {
         id: 'claude-sonnet-4-6',
@@ -105,7 +108,7 @@ export type TierId = 'fast' | 'deep' | 'custom';
 
 export const REASONING_TIERS: Record<Exclude<TierId, 'custom'>, string[]> = {
     fast: ['gemini-3.1-pro', 'gpt-5.4', 'claude-sonnet-4-6'],
-    deep: ['gemini-3.1-pro', 'gpt-5.4-high', 'claude-opus-4-6'],
+    deep: ['gemini-3.1-pro', 'gpt-5.4-high', 'claude-opus-4-7'],
 };
 
 export const TIER_LABELS: Record<TierId, string> = {

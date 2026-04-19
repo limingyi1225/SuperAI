@@ -87,3 +87,27 @@ test('normalizeModelId maps legacy grok aliases to canonical ids', () => {
     assert.equal(normalizeModelId('grok-4.20-multi-agent-experimental-beta-0304'), 'grok-4.20-multi-agent-beta-latest');
     assert.equal(normalizeModelId('grok-4.20-multi-agent-experimental-beta-0304-deep'), 'grok-4.20-multi-agent-beta-latest-deep');
 });
+
+test('normalizeModelId maps legacy Claude Opus 4.6 ids to 4.7', () => {
+    assert.equal(normalizeModelId('claude-opus-4-6'), 'claude-opus-4-7');
+    assert.equal(normalizeModelId('claude-opus-4-6-high'), 'claude-opus-4-7-high');
+    assert.equal(normalizeModelId('claude-opus-4-6-low'), 'claude-opus-4-7-low');
+});
+
+test('AVAILABLE_MODELS contains the Claude Opus 4.7 tier variants', () => {
+    const ids = AVAILABLE_MODELS.map(m => m.id);
+    assert.ok(ids.includes('claude-opus-4-7'));
+    assert.ok(ids.includes('claude-opus-4-7-high'));
+    assert.ok(ids.includes('claude-opus-4-7-low'));
+});
+
+test('REASONING_TIERS.deep references Claude Opus 4.7 (not 4.6)', () => {
+    assert.ok(REASONING_TIERS.deep.includes('claude-opus-4-7'));
+    assert.ok(!REASONING_TIERS.deep.includes('claude-opus-4-6'));
+});
+
+test('resolveRequestedModels deduplicates 4.6 and 4.7 via alias', () => {
+    const resolved = resolveRequestedModels(['claude-opus-4-6', 'claude-opus-4-7']);
+    assert.equal(resolved.length, 1);
+    assert.equal(resolved[0].canonicalId, 'claude-opus-4-7');
+});

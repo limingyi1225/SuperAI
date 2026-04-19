@@ -9,11 +9,11 @@ test('buildQuestionText returns just question text when no files', () => {
     assert.equal(result, 'What is 2+2?');
 });
 
-test('buildQuestionText appends pdf file content', () => {
+test('buildQuestionText does NOT append pdf content (PDFs are sent natively as base64 documents)', () => {
     const files = [{ id: '1', type: 'pdf', content: 'PDF content here', name: 'doc.pdf' }];
     const result = buildQuestionText('Explain this', files);
     assert.ok(result.includes('Explain this'));
-    assert.ok(result.includes('PDF content here'));
+    assert.ok(!result.includes('PDF content here'));
 });
 
 test('buildQuestionText appends text file content', () => {
@@ -31,7 +31,7 @@ test('buildQuestionText does not include image file content', () => {
 });
 
 test('buildQuestionText joins segments with double newline', () => {
-    const files = [{ id: '1', type: 'pdf', content: 'file content', name: 'doc.pdf' }];
+    const files = [{ id: '1', type: 'text', content: 'file content', name: 'notes.txt' }];
     const result = buildQuestionText('My question', files);
     assert.ok(result.includes('My question\n\nfile content'));
 });
@@ -42,9 +42,9 @@ test('buildQuestionText handles empty question text with file content', () => {
     assert.equal(result.trim(), 'only file text');
 });
 
-test('buildQuestionText appends multiple file contents in order', () => {
+test('buildQuestionText appends multiple text-file contents in order', () => {
     const files = [
-        { id: '1', type: 'pdf', content: 'first file', name: 'a.pdf' },
+        { id: '1', type: 'text', content: 'first file', name: 'a.txt' },
         { id: '2', type: 'text', content: 'second file', name: 'b.txt' },
     ];
     const result = buildQuestionText('Question', files);

@@ -4,16 +4,23 @@ import { streamGeminiResponse, GeminiContentPart, GeminiConversationContent } fr
 import { streamClaudeResponse, ClaudeContentPart, ClaudeMessage } from '@/lib/claude';
 import { buildXAIUserContent, streamXAIResponse, XAIMessage } from '@/lib/xai';
 import { normalizeModelId, resolveRequestedModels } from '@/lib/models';
+import {
+    toGeminiInlineData,
+    toGeminiPdfPart,
+    toClaudeImagePart,
+    toClaudePdfPart,
+} from '@/lib/mediaParts';
+import { pipeProviderEvents, writeSSE } from '@/lib/sseEmitter';
 
 export const runtime = 'nodejs';
 export const maxDuration = 900; // 15 minutes timeout
 
 interface AskRequest {
     question: string;
-    images?: string[]; // base64 encoded images
-    pdfs?: string[];   // base64 encoded PDFs (data:application/pdf;base64,...)
-    models: string[]; // model IDs to use
-    language?: 'Chinese' | 'English'; // Response language
+    images?: string[];
+    pdfs?: string[];
+    models: string[];
+    language?: 'Chinese' | 'English';
     history?: ConversationTurn[];
 }
 
@@ -28,72 +35,6 @@ const MAX_CHARS_PER_TURN = 12000;
 
 function clipText(value: string, maxChars = MAX_CHARS_PER_TURN): string {
     return value.length > maxChars ? value.slice(0, maxChars) : value;
-}
-
-function toGeminiInlineData(image: string): { mimeType: string; data: string } {
-    if (image.startsWith('data:')) {
-        const match = image.match(/^data:([^;]+);base64,(.+)$/);
-        if (match) {
-            return {
-                mimeType: match[1],
-                data: match[2],
-            };
-        }
-    }
-
-    return {
-        mimeType: 'image/jpeg',
-        data: image,
-    };
-}
-
-function toClaudeImagePart(image: string): ClaudeContentPart {
-    if (image.startsWith('data:')) {
-        const match = image.match(/^data:([^;]+);base64,(.+)$/);
-        if (match) {
-            return {
-                type: 'image',
-                source: {
-                    type: 'base64',
-                    media_type: match[1],
-                    data: match[2],
-                },
-            };
-        }
-    }
-
-    return {
-        type: 'image',
-        source: {
-            type: 'base64',
-            media_type: 'image/jpeg',
-            data: image,
-        },
-    };
-}
-
-function toClaudePdfPart(pdf: string): ClaudeContentPart {
-    const match = pdf.match(/^data:application\/pdf;base64,(.+)$/);
-    const data = match ? match[1] : pdf;
-    return {
-        type: 'document',
-        source: {
-            type: 'base64',
-            media_type: 'application/pdf',
-            data,
-        },
-    };
-}
-
-function toGeminiPdfPart(pdf: string): GeminiContentPart {
-    const match = pdf.match(/^data:application\/pdf;base64,(.+)$/);
-    const data = match ? match[1] : pdf;
-    return {
-        inlineData: {
-            mimeType: 'application/pdf',
-            data,
-        },
-    };
 }
 
 function sanitizeHistory(history: unknown): ConversationTurn[] {
@@ -134,7 +75,7 @@ function sanitizeHistory(history: unknown): ConversationTurn[] {
             }
         }
 
-        // Keep turns that have text OR images (don't drop image-only turns)
+        // Keep turns that have text OR images.
         if (!userText.trim() && userImages.length === 0) continue;
 
         sanitized.push({
@@ -200,36 +141,31 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Create a TransformStream to handle SSE
-        const encoder = new TextEncoder();
         const stream = new TransformStream();
         const writer = stream.writable.getWriter();
 
-        // Process each model in parallel
+        // Signal the writer loop to give up when the client disconnects.
+        // (Provider SDKs won't observe this yet, but queued writes short-circuit
+        // and Promise.all unblocks so the handler exits promptly.)
+        const clientAborted = { flag: false };
+        if (request.signal) {
+            request.signal.addEventListener('abort', () => {
+                clientAborted.flag = true;
+            }, { once: true });
+        }
+
         const processModels = async () => {
             const modelPromises = resolvedModels.map(async ({ requestedId: modelId, canonicalId, config: modelConfig }) => {
                 if (!modelConfig) {
-                    await writer.write(
-                        encoder.encode(`data: ${JSON.stringify({
-                            type: 'error',
-                            modelId,
-                            error: 'Model not found'
-                        })}\n\n`)
-                    );
+                    if (clientAborted.flag) return;
+                    await writeSSE(writer, { type: 'error', modelId, error: 'Model not found' });
                     return;
                 }
 
                 try {
-                    // Send start event
-                    await writer.write(
-                        encoder.encode(`data: ${JSON.stringify({
-                            type: 'start',
-                            modelId,
-                            modelName: modelConfig.name
-                        })}\n\n`)
-                    );
+                    if (clientAborted.flag) return;
+                    await writeSSE(writer, { type: 'start', modelId, modelName: modelConfig.name });
 
-                    // Define language-specific prompts
                     const systemPrompt = language === 'English'
                         ? `You are an expert problem-solving assistant. You will receive questions (e.g., math, chemistry, economics) from users. Your task is to:
 
@@ -243,12 +179,14 @@ Output language requirement: respond in English.`
 2. 展示详细的解题步骤和推理过程，确保具体且易于理解。
 输出语言要求：学科专用术语必须使用英文，例如：元素、化合物、反应名、公式等，这些专用词汇不需要翻译成中文。其他的非学科专用词汇必须使用中文。`;
 
+                    const attachmentFallbackText = language === 'English'
+                        ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
+                        : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。';
+
                     if (modelConfig.provider === 'openai') {
                         const openAIEffort = modelConfig.effort === 'max' ? 'high' : modelConfig.effort;
-                        // Build OpenAI messages with per-model history.
                         const content: OpenAIContentPart[] = [];
 
-                        // Attach PDFs inline as base64 via input_file with file_data
                         for (const pdf of pdfs) {
                             content.push({ type: 'input_file', filename: 'document.pdf', file_data: pdf } as unknown as OpenAIContentPart);
                         }
@@ -256,12 +194,7 @@ Output language requirement: respond in English.`
                         if (question.trim()) {
                             content.push({ type: 'text', text: question });
                         } else if (images.length > 0 || pdfs.length > 0) {
-                            content.push({
-                                type: 'text',
-                                text: language === 'English'
-                                    ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
-                                    : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
-                            });
+                            content.push({ type: 'text', text: attachmentFallbackText });
                         }
 
                         for (const img of images) {
@@ -269,7 +202,7 @@ Output language requirement: respond in English.`
                                 type: 'image_url',
                                 image_url: {
                                     url: img.startsWith('data:') ? img : `data:image/jpeg;base64,${img}`,
-                                    detail: 'high'
+                                    detail: 'high',
                                 },
                             });
                         }
@@ -277,9 +210,7 @@ Output language requirement: respond in English.`
                         const historyMessages: OpenAIMessage[] = [];
 
                         for (const turn of sanitizedHistory) {
-                            const userContent: OpenAIContentPart[] = [
-                                { type: 'text', text: turn.userText }
-                            ];
+                            const userContent: OpenAIContentPart[] = [{ type: 'text', text: turn.userText }];
 
                             for (const image of turn.userImages ?? []) {
                                 userContent.push({
@@ -291,87 +222,23 @@ Output language requirement: respond in English.`
                                 });
                             }
 
-                            historyMessages.push({
-                                role: 'user',
-                                content: userContent,
-                            });
+                            historyMessages.push({ role: 'user', content: userContent });
 
                             const assistantText = getAssistantTextForModel(turn.modelAnswers, modelId, canonicalId);
                             if (assistantText && assistantText.trim()) {
-                                historyMessages.push({
-                                    role: 'assistant',
-                                    content: assistantText,
-                                });
+                                historyMessages.push({ role: 'assistant', content: assistantText });
                             }
                         }
 
                         const messages: OpenAIMessage[] = [
-                            {
-                                role: 'system' as const,
-                                content: systemPrompt
-                            },
+                            { role: 'system' as const, content: systemPrompt },
                             ...historyMessages,
                             { role: 'user' as const, content },
                         ];
 
-                        let reasoningSummaryStarted = false;
-                        let reasoningSummaryDone = false;
-
-                        for await (const event of streamOpenAIResponse(messages, canonicalId, openAIEffort)) {
-                            if (event.type === 'answer_delta' && event.content) {
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'chunk',
-                                        modelId,
-                                        content: event.content
-                                    })}\n\n`)
-                                );
-                                continue;
-                            }
-
-                            if (event.type === 'reasoning_summary_delta' && event.content) {
-                                if (!reasoningSummaryStarted) {
-                                    reasoningSummaryStarted = true;
-                                    await writer.write(
-                                        encoder.encode(`data: ${JSON.stringify({
-                                            type: 'reasoning_summary_start',
-                                            modelId
-                                        })}\n\n`)
-                                    );
-                                }
-
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'reasoning_summary_chunk',
-                                        modelId,
-                                        content: event.content
-                                    })}\n\n`)
-                                );
-                                continue;
-                            }
-
-                            if (event.type === 'reasoning_summary_done' && reasoningSummaryStarted && !reasoningSummaryDone) {
-                                reasoningSummaryDone = true;
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'reasoning_summary_done',
-                                        modelId
-                                    })}\n\n`)
-                                );
-                            }
-                        }
-
-                        if (reasoningSummaryStarted && !reasoningSummaryDone) {
-                            await writer.write(
-                                encoder.encode(`data: ${JSON.stringify({
-                                    type: 'reasoning_summary_done',
-                                    modelId
-                                })}\n\n`)
-                            );
-                        }
+                        await pipeProviderEvents(writer, modelId, streamOpenAIResponse(messages, canonicalId, openAIEffort));
                     } else if (modelConfig.provider === 'gemini') {
                         const geminiEffort = modelConfig.effort === 'max' ? 'high' : modelConfig.effort;
-                        // Build Gemini content with per-model history.
                         const questionPrefix = language === 'English' ? 'Question:' : '用户题目：';
                         const currentTurnParts: GeminiContentPart[] = [];
 
@@ -380,120 +247,39 @@ Output language requirement: respond in English.`
                         }
 
                         if (question.trim()) {
-                            currentTurnParts.push({
-                                text: `${questionPrefix}${question}`
-                            });
+                            currentTurnParts.push({ text: `${questionPrefix}${question}` });
                         } else if (images.length > 0 || pdfs.length > 0) {
-                            currentTurnParts.push({
-                                text: language === 'English'
-                                    ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
-                                    : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
-                            });
+                            currentTurnParts.push({ text: attachmentFallbackText });
                         }
 
                         for (const img of images) {
                             const inlineData = toGeminiInlineData(img);
-                            currentTurnParts.push({
-                                inlineData: {
-                                    mimeType: inlineData.mimeType,
-                                    data: inlineData.data,
-                                },
-                            });
+                            currentTurnParts.push({ inlineData });
                         }
 
                         const geminiContents: GeminiConversationContent[] = [];
 
                         for (const turn of sanitizedHistory) {
-                            const userParts: GeminiContentPart[] = [
-                                { text: `${questionPrefix}${turn.userText}` },
-                            ];
+                            const userParts: GeminiContentPart[] = [{ text: `${questionPrefix}${turn.userText}` }];
 
                             for (const image of turn.userImages ?? []) {
                                 const inlineData = toGeminiInlineData(image);
-                                userParts.push({
-                                    inlineData: {
-                                        mimeType: inlineData.mimeType,
-                                        data: inlineData.data,
-                                    },
-                                });
+                                userParts.push({ inlineData });
                             }
 
-                            geminiContents.push({
-                                role: 'user',
-                                parts: userParts,
-                            });
+                            geminiContents.push({ role: 'user', parts: userParts });
 
                             const assistantText = getAssistantTextForModel(turn.modelAnswers, modelId, canonicalId);
                             if (assistantText && assistantText.trim()) {
-                                geminiContents.push({
-                                    role: 'model',
-                                    parts: [{ text: assistantText }],
-                                });
+                                geminiContents.push({ role: 'model', parts: [{ text: assistantText }] });
                             }
                         }
 
                         if (currentTurnParts.length > 0) {
-                            geminiContents.push({
-                                role: 'user',
-                                parts: currentTurnParts,
-                            });
+                            geminiContents.push({ role: 'user', parts: currentTurnParts });
                         }
 
-                        let reasoningSummaryStarted = false;
-                        let reasoningSummaryDone = false;
-
-                        for await (const event of streamGeminiResponse(geminiContents, geminiEffort, systemPrompt)) {
-                            if (event.type === 'answer_delta' && event.content) {
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'chunk',
-                                        modelId,
-                                        content: event.content
-                                    })}\n\n`)
-                                );
-                                continue;
-                            }
-
-                            if (event.type === 'reasoning_summary_delta' && event.content) {
-                                if (!reasoningSummaryStarted) {
-                                    reasoningSummaryStarted = true;
-                                    await writer.write(
-                                        encoder.encode(`data: ${JSON.stringify({
-                                            type: 'reasoning_summary_start',
-                                            modelId
-                                        })}\n\n`)
-                                    );
-                                }
-
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'reasoning_summary_chunk',
-                                        modelId,
-                                        content: event.content
-                                    })}\n\n`)
-                                );
-                                continue;
-                            }
-
-                            if (event.type === 'reasoning_summary_done' && reasoningSummaryStarted && !reasoningSummaryDone) {
-                                reasoningSummaryDone = true;
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'reasoning_summary_done',
-                                        modelId
-                                    })}\n\n`)
-                                );
-                            }
-                        }
-
-                        if (reasoningSummaryStarted && !reasoningSummaryDone) {
-                            await writer.write(
-                                encoder.encode(`data: ${JSON.stringify({
-                                    type: 'reasoning_summary_done',
-                                    modelId
-                                })}\n\n`)
-                            );
-                        }
+                        await pipeProviderEvents(writer, modelId, streamGeminiResponse(geminiContents, geminiEffort, systemPrompt));
                     } else if (modelConfig.provider === 'claude') {
                         const currentContent: ClaudeContentPart[] = [];
 
@@ -504,12 +290,7 @@ Output language requirement: respond in English.`
                         if (question.trim()) {
                             currentContent.push({ type: 'text', text: question });
                         } else if (images.length > 0 || pdfs.length > 0) {
-                            currentContent.push({
-                                type: 'text',
-                                text: language === 'English'
-                                    ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
-                                    : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。'
-                            });
+                            currentContent.push({ type: 'text', text: attachmentFallbackText });
                         }
 
                         for (const img of images) {
@@ -530,93 +311,26 @@ Output language requirement: respond in English.`
                             }
 
                             if (userContent.length > 0) {
-                                claudeMessages.push({
-                                    role: 'user',
-                                    content: userContent,
-                                });
+                                claudeMessages.push({ role: 'user', content: userContent });
                             }
 
                             const assistantText = getAssistantTextForModel(turn.modelAnswers, modelId, canonicalId);
                             if (assistantText && assistantText.trim()) {
-                                claudeMessages.push({
-                                    role: 'assistant',
-                                    content: assistantText,
-                                });
+                                claudeMessages.push({ role: 'assistant', content: assistantText });
                             }
                         }
 
                         if (currentContent.length > 0) {
-                            claudeMessages.push({
-                                role: 'user',
-                                content: currentContent,
-                            });
+                            claudeMessages.push({ role: 'user', content: currentContent });
                         }
 
-                        let reasoningSummaryStarted = false;
-                        let reasoningSummaryDone = false;
-
-                        for await (const event of streamClaudeResponse(
-                            claudeMessages,
-                            canonicalId,
-                            modelConfig.effort,
-                            systemPrompt
-                        )) {
-                            if (event.type === 'answer_delta' && event.content) {
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'chunk',
-                                        modelId,
-                                        content: event.content
-                                    })}\n\n`)
-                                );
-                                continue;
-                            }
-
-                            if (event.type === 'reasoning_summary_delta' && event.content) {
-                                if (!reasoningSummaryStarted) {
-                                    reasoningSummaryStarted = true;
-                                    await writer.write(
-                                        encoder.encode(`data: ${JSON.stringify({
-                                            type: 'reasoning_summary_start',
-                                            modelId
-                                        })}\n\n`)
-                                    );
-                                }
-
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'reasoning_summary_chunk',
-                                        modelId,
-                                        content: event.content
-                                    })}\n\n`)
-                                );
-                                continue;
-                            }
-
-                            if (event.type === 'reasoning_summary_done' && reasoningSummaryStarted && !reasoningSummaryDone) {
-                                reasoningSummaryDone = true;
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'reasoning_summary_done',
-                                        modelId
-                                    })}\n\n`)
-                                );
-                            }
-                        }
-
-                        if (reasoningSummaryStarted && !reasoningSummaryDone) {
-                            await writer.write(
-                                encoder.encode(`data: ${JSON.stringify({
-                                    type: 'reasoning_summary_done',
-                                    modelId
-                                })}\n\n`)
-                            );
-                        }
+                        await pipeProviderEvents(
+                            writer,
+                            modelId,
+                            streamClaudeResponse(claudeMessages, canonicalId, modelConfig.effort, systemPrompt),
+                        );
                     } else if (modelConfig.provider === 'xai') {
                         const xaiMessages: XAIMessage[] = [];
-                        const attachmentFallbackText = language === 'English'
-                            ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
-                            : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。';
 
                         for (const turn of sanitizedHistory) {
                             const userContent = buildXAIUserContent({
@@ -625,18 +339,12 @@ Output language requirement: respond in English.`
                             });
 
                             if (userContent) {
-                                xaiMessages.push({
-                                    role: 'user',
-                                    content: userContent,
-                                });
+                                xaiMessages.push({ role: 'user', content: userContent });
                             }
 
                             const assistantText = getAssistantTextForModel(turn.modelAnswers, modelId, canonicalId);
                             if (assistantText && assistantText.trim()) {
-                                xaiMessages.push({
-                                    role: 'assistant',
-                                    content: assistantText,
-                                });
+                                xaiMessages.push({ role: 'assistant', content: assistantText });
                             }
                         }
 
@@ -648,98 +356,40 @@ Output language requirement: respond in English.`
                         });
 
                         if (currentUserContent) {
-                            xaiMessages.push({
-                                role: 'user',
-                                content: currentUserContent,
-                            });
+                            xaiMessages.push({ role: 'user', content: currentUserContent });
                         }
 
-                        let reasoningSummaryStarted = false;
-                        let reasoningSummaryDone = false;
-
-                        for await (const event of streamXAIResponse(
-                            xaiMessages,
-                            canonicalId,
-                            systemPrompt
-                        )) {
-                            if (event.type === 'answer_delta' && event.content) {
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'chunk',
-                                        modelId,
-                                        content: event.content
-                                    })}\n\n`)
-                                );
-                                continue;
-                            }
-
-                            if (event.type === 'reasoning_summary_delta' && event.content) {
-                                if (!reasoningSummaryStarted) {
-                                    reasoningSummaryStarted = true;
-                                    await writer.write(
-                                        encoder.encode(`data: ${JSON.stringify({
-                                            type: 'reasoning_summary_start',
-                                            modelId
-                                        })}\n\n`)
-                                    );
-                                }
-
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'reasoning_summary_chunk',
-                                        modelId,
-                                        content: event.content
-                                    })}\n\n`)
-                                );
-                                continue;
-                            }
-
-                            if (event.type === 'reasoning_summary_done' && reasoningSummaryStarted && !reasoningSummaryDone) {
-                                reasoningSummaryDone = true;
-                                await writer.write(
-                                    encoder.encode(`data: ${JSON.stringify({
-                                        type: 'reasoning_summary_done',
-                                        modelId
-                                    })}\n\n`)
-                                );
-                            }
-                        }
-
-                        if (reasoningSummaryStarted && !reasoningSummaryDone) {
-                            await writer.write(
-                                encoder.encode(`data: ${JSON.stringify({
-                                    type: 'reasoning_summary_done',
-                                    modelId
-                                })}\n\n`)
-                            );
-                        }
+                        await pipeProviderEvents(
+                            writer,
+                            modelId,
+                            streamXAIResponse(xaiMessages, canonicalId, systemPrompt),
+                        );
                     }
 
-                    // Send done event
-                    await writer.write(
-                        encoder.encode(`data: ${JSON.stringify({
-                            type: 'done',
-                            modelId
-                        })}\n\n`)
-                    );
+                    if (clientAborted.flag) return;
+                    await writeSSE(writer, { type: 'done', modelId });
                 } catch (error) {
+                    if (clientAborted.flag) return;
                     console.error(`Error with model ${modelId}:`, error);
-                    await writer.write(
-                        encoder.encode(`data: ${JSON.stringify({
-                            type: 'error',
-                            modelId,
-                            error: error instanceof Error ? error.message : 'Unknown error'
-                        })}\n\n`)
-                    );
+                    await writeSSE(writer, {
+                        type: 'error',
+                        modelId,
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                    });
                 }
             });
 
             await Promise.all(modelPromises);
-            await writer.write(encoder.encode(`data: ${JSON.stringify({ type: 'complete' })}\n\n`));
-            await writer.close();
+            if (!clientAborted.flag) {
+                await writeSSE(writer, { type: 'complete' });
+            }
+            try {
+                await writer.close();
+            } catch {
+                // Writer may already be closed if the client aborted.
+            }
         };
 
-        // Start processing in the background
         processModels();
 
         return new Response(stream.readable, {

@@ -27,10 +27,13 @@ export function useModelSelection(): UseModelSelectionReturn {
   // Derive selected models dynamically to guarantee they never desync from activeTier
   const selectedModels = activeTier === 'custom' ? customModels : REASONING_TIERS[activeTier];
 
-  // Hydrate from localStorage after mount to avoid SSR mismatch
+  // Hydrate from localStorage after mount to avoid SSR mismatch.
+  // The rule expects external-system subscriptions, but this runs once at mount
+  // to pick up persisted preferences; the cascading-render warning doesn't apply.
   useEffect(() => {
     const savedTier = readStorage('activeTier');
     if (savedTier && ['deep', 'custom'].includes(savedTier)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from localStorage
       setActiveTier(savedTier as TierId);
     }
 

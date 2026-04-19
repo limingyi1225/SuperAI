@@ -26,7 +26,7 @@ test('streamClaudeResponse throws when ANTHROPIC_API_KEY is missing', async () =
             async () => {
                 for await (const _ of streamClaudeResponse(
                     [{ role: 'user', content: 'Hello' }],
-                    'claude-opus-4-6'
+                    'claude-opus-4-7'
                 )) {
                     // Should not reach here
                 }

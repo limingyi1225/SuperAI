@@ -43,8 +43,17 @@ function parsePositiveIntEnv(name: string, defaultValue: number): number {
 }
 
 function resolveClaudeModel(model: string): string {
-    if (model === 'claude-opus-4-6' || model === 'claude-opus-4-6-high' || model === 'claude-opus-4-6-low') {
-        return process.env.CLAUDE_MODEL_OPUS || process.env.CLAUDE_MODEL || 'claude-opus-4-6';
+    if (
+        model === 'claude-opus-4-7' ||
+        model === 'claude-opus-4-7-high' ||
+        model === 'claude-opus-4-7-low' ||
+        // Backward compat for any stale saved session IDs (alias layer in models.ts
+        // normally normalizes these, but we accept them here defensively).
+        model === 'claude-opus-4-6' ||
+        model === 'claude-opus-4-6-high' ||
+        model === 'claude-opus-4-6-low'
+    ) {
+        return process.env.CLAUDE_MODEL_OPUS || process.env.CLAUDE_MODEL || 'claude-opus-4-7';
     }
     if (model === 'claude-sonnet-4-6') {
         return process.env.CLAUDE_MODEL_SONNET || process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
@@ -65,9 +74,10 @@ function resolveClaudeOutputEffort(effort: ClaudeOutputEffort): ClaudeOutputEffo
 }
 
 function createClient(): Anthropic {
-    return new Anthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    // Ignore empty-string env vars (e.g. when the host shell exports an empty
+    // ANTHROPIC_API_KEY) so .env.local values don't get silently overridden.
+    const apiKey = process.env.ANTHROPIC_API_KEY?.trim() || undefined;
+    return new Anthropic({ apiKey });
 }
 
 function buildTools(): Anthropic.Messages.Tool[] {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface UploadedFile {
@@ -36,10 +36,11 @@ export interface Session {
     isGeneratingTitle?: boolean;
 }
 
-interface SessionContextType {
-    sessions: Session[];
-    currentSessionId: string | null;
-    currentSession: Session | null;
+/**
+ * Actions are stable across renders (closed over refs). Components that only
+ * need actions will not re-render when sessions data changes.
+ */
+interface SessionActions {
     createSession: () => string;
     selectSession: (id: string) => void;
     deleteSession: (id: string) => void;
@@ -49,7 +50,16 @@ interface SessionContextType {
     setSessionGeneratingTitle: (sessionId: string, isGenerating: boolean) => void;
 }
 
-const SessionContext = createContext<SessionContextType | null>(null);
+interface SessionData {
+    sessions: Session[];
+    currentSessionId: string | null;
+    currentSession: Session | null;
+}
+
+type SessionContextType = SessionData & SessionActions;
+
+const SessionDataContext = createContext<SessionData | null>(null);
+const SessionActionsContext = createContext<SessionActions | null>(null);
 
 const SESSIONS_KEY = 'isbaby_sessions';
 const CURRENT_SESSION_KEY = 'isbaby_currentSessionId';
@@ -94,6 +104,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const [storageHydrated, setStorageHydrated] = useState(false);
     const persistTimerRef = useRef<number | null>(null);
 
+    // Refs mirror state so action callbacks can be stable.
+    const sessionsRef = useRef(sessions);
+    const currentSessionIdRef = useRef(currentSessionId);
+    useEffect(() => { sessionsRef.current = sessions; }, [sessions]);
+    useEffect(() => { currentSessionIdRef.current = currentSessionId; }, [currentSessionId]);
+
     useEffect(() => {
         const { sessions: saved, currentSessionId: savedId } = loadFromStorage();
         const hydrateTimer = window.setTimeout(() => {
@@ -106,15 +122,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         };
     }, []);
 
-    // Persist sessions to localStorage on change (skip initial hydration write)
+    // Persist sessions to localStorage on change (skip initial hydration write).
     useEffect(() => {
         if (!storageHydrated) return;
         if (persistTimerRef.current !== null) {
             window.clearTimeout(persistTimerRef.current);
         }
         // Strip large binary content (base64 images/PDFs) before persisting to avoid
-        // blowing the 5-10 MB localStorage budget. Only metadata (name, type, id) is
-        // kept so history can show what files were attached without storing the raw data.
+        // blowing the 5-10 MB localStorage budget. Only metadata is kept so history
+        // can show what files were attached without storing the raw data.
         const toSave = sessions.map(s => ({
             ...s,
             isGeneratingTitle: false,
@@ -131,7 +147,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             try {
                 localStorage.setItem(SESSIONS_KEY, JSON.stringify(toSave));
             } catch {
-                // localStorage full or unavailable, silently ignore
+                // localStorage full or unavailable — silently ignore.
             }
         }, 800);
         return () => {
@@ -142,7 +158,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         };
     }, [sessions, storageHydrated]);
 
-    // Persist currentSessionId
     useEffect(() => {
         if (!storageHydrated) return;
         if (currentSessionId) {
@@ -152,127 +167,107 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
     }, [currentSessionId, storageHydrated]);
 
-    const currentSession = sessions.find(s => s.id === currentSessionId) || null;
+    const currentSession = useMemo(
+        () => sessions.find(s => s.id === currentSessionId) || null,
+        [sessions, currentSessionId]
+    );
 
-    const createSession = useCallback(() => {
-        const newSession: Session = {
-            id: uuidv4(),
-            name: `Session ${sessions.length + 1}`,
-            questions: [],
-            createdAt: new Date(),
-        };
-        setSessions(prev => [...prev, newSession]);
-        setCurrentSessionId(newSession.id);
-        return newSession.id;
-    }, [sessions.length]);
-
-    const selectSession = useCallback((id: string) => {
-        setCurrentSessionId(id);
-    }, []);
-
-    const deleteSession = useCallback((sessionId: string) => {
-        setSessions(prev => {
-            const remaining = prev.filter(s => s.id !== sessionId);
-            setCurrentSessionId(cur => {
-                if (cur !== sessionId) return cur;
-                return remaining.length > 0 ? remaining[remaining.length - 1].id : null;
+    // Stable actions — computed once, never change. Close over refs for reads.
+    const actions = useMemo<SessionActions>(() => ({
+        createSession: () => {
+            const newSession: Session = {
+                id: uuidv4(),
+                name: `Session ${sessionsRef.current.length + 1}`,
+                questions: [],
+                createdAt: new Date(),
+            };
+            setSessions(prev => [...prev, newSession]);
+            setCurrentSessionId(newSession.id);
+            return newSession.id;
+        },
+        selectSession: (id: string) => setCurrentSessionId(id),
+        deleteSession: (sessionId: string) => {
+            setSessions(prev => {
+                const remaining = prev.filter(s => s.id !== sessionId);
+                setCurrentSessionId(cur => {
+                    if (cur !== sessionId) return cur;
+                    return remaining.length > 0 ? remaining[remaining.length - 1].id : null;
+                });
+                return remaining;
             });
-            return remaining;
-        });
-    }, []);
-
-    const addQuestion = useCallback((question: Omit<Question, 'id' | 'timestamp'>, targetSessionId?: string) => {
-        const questionId = uuidv4();
-        const newQuestion: Question = {
-            ...question,
-            id: questionId,
-            timestamp: new Date(),
-        };
-
-        const sessionToUpdate = targetSessionId || currentSessionId;
-
-        setSessions(prev => prev.map(session => {
-            if (session.id === sessionToUpdate) {
-                return {
-                    ...session,
-                    questions: [...session.questions, newQuestion],
-                };
-            }
-            return session;
-        }));
-
-        return questionId;
-    }, [currentSessionId]);
-
-    const updateAnswer = useCallback((questionId: string, modelId: string, update: Partial<ModelAnswer>, sessionId?: string) => {
-        setSessions(prev => prev.map(session => {
-            if (session.id === (sessionId || currentSessionId)) {
+        },
+        addQuestion: (question, targetSessionId) => {
+            const questionId = uuidv4();
+            const newQuestion: Question = {
+                ...question,
+                id: questionId,
+                timestamp: new Date(),
+            };
+            const sessionToUpdate = targetSessionId || currentSessionIdRef.current;
+            setSessions(prev => prev.map(session =>
+                session.id === sessionToUpdate
+                    ? { ...session, questions: [...session.questions, newQuestion] }
+                    : session
+            ));
+            return questionId;
+        },
+        updateAnswer: (questionId, modelId, update, sessionId) => {
+            const sessionToUpdate = sessionId || currentSessionIdRef.current;
+            setSessions(prev => prev.map(session => {
+                if (session.id !== sessionToUpdate) return session;
                 return {
                     ...session,
                     questions: session.questions.map(q => {
-                        if (q.id === questionId) {
-                            return {
-                                ...q,
-                                answers: q.answers.map(a =>
-                                    a.modelId === modelId ? { ...a, ...update } : a
-                                ),
-                            };
-                        }
-                        return q;
+                        if (q.id !== questionId) return q;
+                        return {
+                            ...q,
+                            answers: q.answers.map(a =>
+                                a.modelId === modelId ? { ...a, ...update } : a
+                            ),
+                        };
                     }),
                 };
-            }
-            return session;
-        }));
-    }, [currentSessionId]);
+            }));
+        },
+        renameSession: (sessionId, newName) => {
+            setSessions(prev => prev.map(session =>
+                session.id === sessionId ? { ...session, name: newName } : session
+            ));
+        },
+        setSessionGeneratingTitle: (sessionId, isGenerating) => {
+            setSessions(prev => prev.map(session =>
+                session.id === sessionId ? { ...session, isGeneratingTitle: isGenerating } : session
+            ));
+        },
+    }), []);
 
-    const renameSession = useCallback((sessionId: string, newName: string) => {
-        setSessions(prev => prev.map(session =>
-            session.id === sessionId ? { ...session, name: newName } : session
-        ));
-    }, []);
-
-    const setSessionGeneratingTitle = useCallback((sessionId: string, isGenerating: boolean) => {
-        setSessions(prev => prev.map(session =>
-            session.id === sessionId ? { ...session, isGeneratingTitle: isGenerating } : session
-        ));
-    }, []);
-
-    const contextValue = useMemo<SessionContextType>(() => ({
-        sessions,
-        currentSessionId,
-        currentSession,
-        createSession,
-        selectSession,
-        deleteSession,
-        addQuestion,
-        updateAnswer,
-        renameSession,
-        setSessionGeneratingTitle,
-    }), [
-        sessions,
-        currentSessionId,
-        currentSession,
-        createSession,
-        selectSession,
-        deleteSession,
-        addQuestion,
-        updateAnswer,
-        renameSession,
-        setSessionGeneratingTitle,
-    ]);
+    const data = useMemo<SessionData>(
+        () => ({ sessions, currentSessionId, currentSession }),
+        [sessions, currentSessionId, currentSession]
+    );
 
     return (
-        <SessionContext.Provider value={contextValue}>
-            {children}
-        </SessionContext.Provider>
+        <SessionActionsContext.Provider value={actions}>
+            <SessionDataContext.Provider value={data}>
+                {children}
+            </SessionDataContext.Provider>
+        </SessionActionsContext.Provider>
     );
 }
 
-export function useSession() {
-    const context = useContext(SessionContext);
-    if (!context) {
-        throw new Error('useSession must be used within a SessionProvider');
-    }
-    return context;
+export function useSessionActions(): SessionActions {
+    const ctx = useContext(SessionActionsContext);
+    if (!ctx) throw new Error('useSessionActions must be used within a SessionProvider');
+    return ctx;
+}
+
+export function useSessionData(): SessionData {
+    const ctx = useContext(SessionDataContext);
+    if (!ctx) throw new Error('useSessionData must be used within a SessionProvider');
+    return ctx;
+}
+
+/** Backwards-compatible combined hook — unchanged public API. */
+export function useSession(): SessionContextType {
+    return { ...useSessionData(), ...useSessionActions() };
 }

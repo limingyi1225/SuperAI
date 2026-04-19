@@ -40,7 +40,7 @@ export const PROVIDER_MODEL_SLIDERS: Record<ProviderId, ProviderSliderConfig> = 
         defaultModelId: 'claude-sonnet-4-6',
         steps: [
             { modelId: 'claude-sonnet-4-6', label: 'Sonnet' },
-            { modelId: 'claude-opus-4-6', label: 'Opus' },
+            { modelId: 'claude-opus-4-7', label: 'Opus' },
         ],
     },
     xai: {

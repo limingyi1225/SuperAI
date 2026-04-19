@@ -25,8 +25,10 @@ export async function POST(request: NextRequest) {
             }
         ];
 
+        const titleModel = process.env.OPENAI_MODEL_TITLE || 'gpt-5-nano';
+
         let title = '';
-        for await (const event of streamOpenAIResponse(messages, 'gpt-5-nano', 'low')) {
+        for await (const event of streamOpenAIResponse(messages, titleModel, 'low')) {
             if (event.type === 'answer_delta' && event.content) {
                 title += event.content;
             }

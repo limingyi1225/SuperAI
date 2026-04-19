@@ -14,14 +14,14 @@ test('normalizeProviderModelSelection returns selected providers in stable order
         'gpt-5.4-high',
         'gemini-3.1-pro-medium',
         'gpt-5.4-pro',
-        'claude-opus-4-6',
+        'claude-opus-4-7',
         'grok-4.20-multi-agent-beta-latest-deep',
     ]);
 
     assert.deepEqual(selection, [
         'gpt-5.4-high',
         'gemini-3.1-pro-medium',
-        'claude-opus-4-6',
+        'claude-opus-4-7',
         'grok-4.20-multi-agent-beta-latest-deep',
     ]);
 });
@@ -85,16 +85,16 @@ test('setProviderModelOrOff supports off option while keeping at least one model
     const stillOne = setProviderModelOrOff(oneModel, 'openai', null);
     assert.deepEqual(stillOne, ['gpt-5.4']);
 
-    const reenable = setProviderModelOrOff(stillOne, 'claude', 'claude-opus-4-6');
-    assert.deepEqual(reenable, ['gpt-5.4', 'claude-opus-4-6']);
+    const reenable = setProviderModelOrOff(stillOne, 'claude', 'claude-opus-4-7');
+    assert.deepEqual(reenable, ['gpt-5.4', 'claude-opus-4-7']);
 });
 
 test('toggleProviderSelection enables grok with its default preset', () => {
-    const next = toggleProviderSelection(['gpt-5.4', 'claude-opus-4-6'], 'xai');
+    const next = toggleProviderSelection(['gpt-5.4', 'claude-opus-4-7'], 'xai');
 
     assert.deepEqual(next, [
         'gpt-5.4',
-        'claude-opus-4-6',
+        'claude-opus-4-7',
         PROVIDER_MODEL_SLIDERS.xai.defaultModelId,
     ]);
 });
