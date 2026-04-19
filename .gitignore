@@ -15,6 +15,8 @@
 
 # next.js
 /.next/
+/.next.pre-*/
+/.next_stale_*/
 /out/
 
 # production
@@ -40,3 +42,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local dev tooling (per-machine)
+/.claude/worktrees/
+/.claude/settings.local.json
+
+# generated artifacts (may contain node_modules, large binaries)
+/output/

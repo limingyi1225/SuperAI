@@ -33,8 +33,7 @@ middleware.ts              — Basic HTTP Auth (all routes)
 
 ## Rules
 
-- Do NOT touch `/liquid glass/` or `components/LiquidGlass/` — unused experiments.
-- Do NOT add an `npm test` script — tests are run individually by design.
+- `/liquid glass/` and `components/LiquidGlass/` were removed (dead experiments).
 - `lib/claude.ts` uses `@anthropic-ai/sdk` for Claude API streaming.
 - `pdf-parse` must be dynamically imported in `/api/upload` — static import breaks the build.
 - `next.config.ts` must keep `output: "standalone"` — required for deployment.

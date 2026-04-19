@@ -71,7 +71,7 @@ OPENAI_MODEL_LOW=gpt-5.4
 OPENAI_MODEL_HIGH=gpt-5.4
 OPENAI_MODEL_PRO=gpt-5.4-pro
 GEMINI_MODEL=gemini-3.1-pro-preview  # frontend model ID is gemini-3.1-pro; fallback default is gemini-2.0-flash
-CLAUDE_MODEL_OPUS=claude-opus-4-6
+CLAUDE_MODEL_OPUS=claude-opus-4-7
 CLAUDE_MODEL_SONNET=claude-sonnet-4-6
 XAI_MODEL_GROK_MULTI_AGENT=grok-4.20-multi-agent-experimental-beta-0304
 
@@ -103,7 +103,7 @@ AUTH_REALM=IsabbY
 ## Gotchas
 
 - `pdf-parse` uses dynamic import in `/api/upload` to avoid bundling issues
-- `/liquid glass/` subdirectory is an unused Vite experiment — ignore it
+- `npm test` runs the Node built-in test runner against `tests/*.test.mjs`
 - `middleware.ts` Basic Auth applies to all routes including API; disable in dev via `AUTH_ENABLED=false`
 - `lib/claude.ts` uses `@anthropic-ai/sdk` for Claude API streaming
 - Claude `pause_turn` auto-resumes up to 5 times (`CLAUDE_TOOL_PAUSE_TURN_MAX`, default 5)

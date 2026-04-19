@@ -9,9 +9,16 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".next.pre-*/**",
+    ".next_stale_*/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local-only generated outputs (PPTX helpers, docs drafts, etc.)
+    "output/**",
+    "docs/**",
+    // Worktrees (git isolation dirs) carry their own build artifacts.
+    ".claude/**",
   ]),
 ]);
 

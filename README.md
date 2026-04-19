@@ -81,7 +81,7 @@ These are optional and control built-in tool behavior for Gemini:
 These are optional unless you use Claude models:
 
 - `ANTHROPIC_API_KEY` (required for Claude)
-- `CLAUDE_MODEL_OPUS` (default: `claude-opus-4-6`)
+- `CLAUDE_MODEL_OPUS` (default: `claude-opus-4-7`)
 - `CLAUDE_MODEL` (fallback model if `CLAUDE_MODEL_OPUS` is unset)
 - `CLAUDE_MAX_TOKENS` (default: `16384`)
 - `CLAUDE_ENABLE_THINKING` (default: `true`, uses `thinking: { type: "adaptive" }`)
