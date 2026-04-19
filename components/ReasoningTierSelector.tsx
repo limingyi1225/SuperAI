@@ -82,6 +82,8 @@ function ReasoningTierSelector({
     disabled,
 }: ReasoningTierSelectorProps) {
     const [mounted, setMounted] = useState(false);
+    // Mount-only flag for SSR hydration: skip the rule's cascading-render warning.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration guard
     useEffect(() => setMounted(true), []);
     const activeIndex = mounted ? TIERS.indexOf(activeTier) : 0;
     const [panelOpen, setPanelOpen] = useState(false);

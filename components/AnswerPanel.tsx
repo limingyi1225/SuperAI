@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -17,41 +17,55 @@ import styles from './AnswerPanel.module.css';
  * Code blocks (``` and `) are preserved and not touched.
  */
 function preprocessLaTeX(text: string): string {
-    // Split by code fences and inline code so we only process prose segments.
     const segments = text.split(/(```[\s\S]*?```|`[^`]+`)/g);
     return segments
         .map((segment, index) => {
-            // Odd-indexed segments are preserved blocks — leave them alone
             if (index % 2 === 1) return segment;
-
-            // Convert \[...\] → $$...$$ (display math)
             let result = segment.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, (_, inner) => `$$${inner}$$`);
-            // Convert \(...\) → $...$ (inline math)
             result = result.replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, (_, inner) => `$${inner}$`);
-
-            // Force $$...$$ to block form even when model outputs it inline,
-            // e.g. "设 $$I=...$$ 下一步..." -> reliably rendered display math.
             result = result.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (_, inner) => {
                 const content = String(inner).trim();
                 if (!content) return '$$ $$';
                 return `\n\n$$\n${content}\n$$\n\n`;
             });
-
             return result;
         })
         .join('');
 }
+
+const REMARK_PLUGINS = [remarkGfm, remarkMath];
+const REHYPE_PLUGINS_WITH_MATH = [rehypeKatex, rehypeHighlight];
+const REHYPE_PLUGINS_PLAIN = [rehypeHighlight];
+
+const MarkdownView = React.memo(function MarkdownView({ source }: { source: string }) {
+    const needsKatex = useMemo(() => /\$|\\\(|\\\[/.test(source), [source]);
+    const rehypePlugins = needsKatex ? REHYPE_PLUGINS_WITH_MATH : REHYPE_PLUGINS_PLAIN;
+    return (
+        <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={rehypePlugins}>
+            {source}
+        </ReactMarkdown>
+    );
+});
 
 interface AnswerPanelProps {
     answers: ModelAnswer[];
     onRetry?: () => void;
 }
 
-function AnswerCard({ answer }: { answer: ModelAnswer }) {
+const AnswerCard = React.memo(function AnswerCard({ answer }: { answer: ModelAnswer }) {
     const [isReasoningOpen, setIsReasoningOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const hasReasoning = Boolean(answer.reasoningSummary);
     const isStreaming = answer.status === 'streaming';
+
+    const preprocessedReasoning = useMemo(
+        () => preprocessLaTeX(answer.reasoningSummary || ''),
+        [answer.reasoningSummary]
+    );
+    const preprocessedContent = useMemo(
+        () => preprocessLaTeX(answer.content || ''),
+        [answer.content]
+    );
 
     const handleCopy = () => {
         if (!answer.content) return;
@@ -61,8 +75,6 @@ function AnswerCard({ answer }: { answer: ModelAnswer }) {
         });
     };
 
-    // Determine if reasoning is still actively streaming
-    // (has content but answer is still streaming and content hasn't started yet or is small)
     const isReasoningStreaming = isStreaming && hasReasoning && answer.content.length < 10;
 
     return (
@@ -100,24 +112,14 @@ function AnswerCard({ answer }: { answer: ModelAnswer }) {
                     {!isReasoningOpen && hasReasoning && (
                         <div className={styles.reasoningPeek}>
                             <div className={styles.reasoningPeekMarkdown}>
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm, remarkMath]}
-                                    rehypePlugins={[rehypeKatex, rehypeHighlight]}
-                                >
-                                    {preprocessLaTeX(answer.reasoningSummary || '')}
-                                </ReactMarkdown>
+                                <MarkdownView source={preprocessedReasoning} />
                             </div>
                         </div>
                     )}
 
                     <div className={`${styles.reasoningContent} ${isReasoningOpen ? styles.open : ''}`}>
                         <div className={styles.reasoningInner}>
-                            <ReactMarkdown
-                                remarkPlugins={[remarkGfm, remarkMath]}
-                                rehypePlugins={[rehypeKatex, rehypeHighlight]}
-                            >
-                                {preprocessLaTeX(answer.reasoningSummary || '')}
-                            </ReactMarkdown>
+                            <MarkdownView source={preprocessedReasoning} />
                             {isReasoningStreaming && <span className={styles.streamingCursor} />}
                         </div>
                     </div>
@@ -147,6 +149,7 @@ function AnswerCard({ answer }: { answer: ModelAnswer }) {
                             className={`${styles.copyBtn} ${copied ? styles.copyBtnCopied : ''}`}
                             onClick={handleCopy}
                             title="Copy answer"
+                            aria-label={copied ? 'Answer copied' : 'Copy answer to clipboard'}
                         >
                             {copied ? (
                                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -162,12 +165,7 @@ function AnswerCard({ answer }: { answer: ModelAnswer }) {
                     )}
                     {answer.content ? (
                         <>
-                            <ReactMarkdown
-                                remarkPlugins={[remarkGfm, remarkMath]}
-                                rehypePlugins={[rehypeKatex, rehypeHighlight]}
-                            >
-                                {preprocessLaTeX(answer.content)}
-                            </ReactMarkdown>
+                            <MarkdownView source={preprocessedContent} />
                             {isStreaming && <span className={styles.streamingCursor} />}
                         </>
                     ) : isStreaming ? (
@@ -181,7 +179,7 @@ function AnswerCard({ answer }: { answer: ModelAnswer }) {
             )}
         </div>
     );
-}
+});
 
 function AnswerPanel({ answers, onRetry }: AnswerPanelProps) {
     const [activeTab, setActiveTab] = useState(0);
@@ -195,13 +193,14 @@ function AnswerPanel({ answers, onRetry }: AnswerPanelProps) {
 
     return (
         <div className={styles.answerPanel}>
-            {/* Tab bar — only show when multiple models */}
             {!isSingleModel && (
-                <div className={styles.tabBar}>
+                <div className={styles.tabBar} role="tablist">
                     {answers.map((answer, idx) => (
                         <button
                             key={answer.modelId}
                             type="button"
+                            role="tab"
+                            aria-selected={idx === clampedActiveTab}
                             className={`${styles.tab} ${idx === clampedActiveTab ? styles.activeTab : ''}`}
                             onClick={() => setActiveTab(idx)}
                         >
@@ -212,7 +211,6 @@ function AnswerPanel({ answers, onRetry }: AnswerPanelProps) {
                 </div>
             )}
 
-            {/* Single model header (show model name inline) */}
             {isSingleModel && activeAnswer && (
                 <div className={styles.cardHeader}>
                     <div className={styles.modelInfo}>
@@ -222,7 +220,6 @@ function AnswerPanel({ answers, onRetry }: AnswerPanelProps) {
                 </div>
             )}
 
-            {/* Active answer card */}
             {activeAnswer && <AnswerCard answer={activeAnswer} />}
 
             {allDone && hasError && onRetry && (

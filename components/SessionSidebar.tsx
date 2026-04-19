@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSession } from '@/context/SessionContext';
 import styles from './SessionSidebar.module.css';
 
@@ -11,6 +11,10 @@ interface SessionSidebarProps {
 
 export default function SessionSidebar({ onSessionSelect, onOpenSettings }: SessionSidebarProps) {
     const { sessions, currentSessionId, createSession, selectSession, deleteSession, renameSession } = useSession();
+    const sortedSessions = useMemo(
+        () => [...sessions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+        [sessions]
+    );
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [renameText, setRenameText] = useState('');
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -64,7 +68,7 @@ export default function SessionSidebar({ onSessionSelect, onOpenSettings }: Sess
                         <p className={styles.hint}>Click &quot;New&quot; to start</p>
                     </div>
                 ) : (
-                    [...sessions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).map(session => (
+                    sortedSessions.map(session => (
                         <div
                             key={session.id}
                             className={`${styles.sessionItem} ${session.id === currentSessionId ? styles.active : ''}`}

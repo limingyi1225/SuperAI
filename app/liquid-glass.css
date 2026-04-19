@@ -1,0 +1,33 @@
+/* ─────────────────────────────────────────────────────
+   Liquid-glass backdrop-filter layer
+   Kept as a standalone sheet because Turbopack's
+   Lightning CSS strips unprefixed `backdrop-filter` when
+   it sits next to `-webkit-backdrop-filter`.
+   ───────────────────────────────────────────────────── */
+
+/* Big panels — heavy glass */
+[class*="SessionSidebar-module"][class*="sidebar"],
+[class*="AnswerPanel-module"][class*="answerPanel"],
+[class*="page-module"][class*="inputContainer"],
+[class*="SettingsModal-module"][class*="modal"] {
+  backdrop-filter: saturate(180%) blur(32px);
+}
+
+/* Custom-models popover — extra-heavy frost so content behind is fully obscured */
+[class*="ReasoningTierSelector-module"][class*="customPanel"] {
+  backdrop-filter: saturate(200%) blur(48px);
+}
+
+/* Small glass pills — medium blur */
+[class*="page-module"][class*="toast"],
+[class*="page-module"][class*="mobileMenuBtn"],
+[class*="page-module"][class*="dragContent"] {
+  backdrop-filter: saturate(160%) blur(20px);
+}
+
+/* Overlays (modal backdrop, image preview, drag target) */
+[class*="SettingsModal-module"][class*="overlay"],
+[class*="page-module"][class*="imagePreviewOverlay"],
+[class*="page-module"][class*="dragOverlay"] {
+  backdrop-filter: blur(18px) saturate(140%);
+}

@@ -35,6 +35,7 @@ function MainContent() {
 
   // Refs
   const messagesAreaRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // Stable text accessor — avoids adding `text` to submitQuestion deps
   const textRef = useRef(text);
   useEffect(() => { textRef.current = text; }, [text]);
@@ -152,26 +153,15 @@ function MainContent() {
       {previewImage && (
         <div
           className={styles.imagePreviewOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image preview"
           onClick={() => setPreviewImage(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.9)',
-            zIndex: 2000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
         >
           <img
             src={previewImage}
             alt="Full size preview"
-            style={{
-              maxWidth: '95vw',
-              maxHeight: '95vh',
-              objectFit: 'contain',
-              borderRadius: '8px'
-            }}
+            className={styles.imagePreviewImage}
           />
         </div>
       )}
@@ -278,9 +268,10 @@ function MainContent() {
             <div className={styles.inputRow}>
               <button
                 className={styles.attachBtn}
-                onClick={() => !isUploading && document.getElementById('fileInput')?.click()}
+                onClick={() => !isUploading && fileInputRef.current?.click()}
                 disabled={isCurrentSessionGenerating || isUploading}
                 title={isUploading ? 'Uploading...' : 'Attach files'}
+                aria-label="Attach files"
               >
                 {isUploading ? (
                   <div className={styles.spinner} />
@@ -292,13 +283,15 @@ function MainContent() {
               </button>
               <input
                 type="file"
-                id="fileInput"
+                ref={fileInputRef}
                 multiple
                 accept="image/*,.pdf,.txt"
                 className={styles.hiddenInput}
                 onChange={async (e) => {
                   if (e.target.files) {
                     await processFiles(Array.from(e.target.files));
+                    // Clear so re-selecting the same file still triggers onChange
+                    if (fileInputRef.current) fileInputRef.current.value = '';
                   }
                 }}
               />
@@ -351,7 +344,6 @@ function MainContent() {
               )}
             </div>
           </div>
-          <p className={styles.inputHint}>Enter 发送 · Shift+Enter 换行 · 支持拖放图片 / PDF</p>
         </div>
       </main>
     </div>
