@@ -211,7 +211,10 @@
 .inputArea {
     position: relative;
     padding: var(--space-2) var(--space-5) var(--space-3);
-    background: var(--bg-primary);
+    /* Top fades from transparent so scrolling messages aren't masked by a
+       solid block. Becomes fully opaque only behind the pill / below it
+       (so the page bg cleanly meets the bottom edge of the viewport). */
+    background: linear-gradient(to bottom, transparent 0%, var(--bg-primary) 55%);
     flex-shrink: 0;
 }
 

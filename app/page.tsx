@@ -70,13 +70,6 @@ function MainContent() {
     setSessionGeneratingTitle,
   });
 
-  // Request notification permission on mount
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission();
-    }
-  }, []);
-
   // Reset local state when switching sessions
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset on session change
@@ -97,12 +90,27 @@ function MainContent() {
   }, [previewImage]);
 
 
+  // Defer notification permission to the first user gesture instead of asking on mount.
+  // Browsers (notably Chrome since v80) silently deny permission requests that happen
+  // before any user interaction, and Safari requires a user gesture entirely.
+  const requestNotificationsOnce = () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  };
+
+  const submitWithPermissionPrompt = () => {
+    requestNotificationsOnce();
+    handleSubmit();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.nativeEvent.isComposing) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (isCurrentSessionGenerating) return;
-      handleSubmit();
+      submitWithPermissionPrompt();
     }
   };
 
@@ -121,7 +129,12 @@ function MainContent() {
       )}
 
       {/* Mobile menu button */}
-      <button className={styles.mobileMenuBtn} onClick={() => setIsSidebarOpen(true)}>
+      <button
+        className={styles.mobileMenuBtn}
+        onClick={() => setIsSidebarOpen(prev => !prev)}
+        aria-expanded={isSidebarOpen}
+        aria-label={isSidebarOpen ? 'Close sessions sidebar' : 'Open sessions sidebar'}
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M3 12h18M3 6h18M3 18h18" />
         </svg>
@@ -158,6 +171,7 @@ function MainContent() {
           aria-label="Image preview"
           onClick={() => setPreviewImage(null)}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element -- user-supplied data URL, next/image cannot optimize */}
           <img
             src={previewImage}
             alt="Full size preview"
@@ -197,6 +211,7 @@ function MainContent() {
                         {q.files.map(file => (
                           <div key={file.id} className={styles.questionFile}>
                             {file.type === 'image' && file.preview ? (
+                              // eslint-disable-next-line @next/next/no-img-element -- user-supplied data URL, next/image cannot optimize
                               <img
                                 src={file.preview}
                                 alt={file.name}
@@ -244,6 +259,7 @@ function MainContent() {
                 {files.map(file => (
                   <div key={file.id} className={styles.attachedFile}>
                     {file.preview ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- user-supplied data URL, next/image cannot optimize
                       <img src={file.preview} alt={file.name} className={styles.fileThumb} />
                     ) : (
                       <span className={styles.fileIcon}>{file.type === 'pdf' ? '📄' : '📝'}</span>
@@ -334,7 +350,7 @@ function MainContent() {
               ) : (
                 <button
                   className={`${styles.sendBtn} ${hasContent ? styles.active : ''}`}
-                  onClick={handleSubmit}
+                  onClick={submitWithPermissionPrompt}
                   disabled={!hasContent || selectedModels.length === 0}
                 >
                   <svg viewBox="0 0 24 24" fill="currentColor">
