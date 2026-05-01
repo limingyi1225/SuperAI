@@ -18,11 +18,10 @@ export const PROVIDER_MODEL_SLIDERS: Record<ProviderId, ProviderSliderConfig> = 
     openai: {
         provider: 'openai',
         vendorLabel: 'GPT',
-        defaultModelId: 'gpt-5.4',
+        defaultModelId: 'gpt-5.5',
         steps: [
-            { modelId: 'gpt-5.4', label: 'Medium' },
-            { modelId: 'gpt-5.4-high', label: 'High' },
-            { modelId: 'gpt-5.4-pro', label: 'Pro' },
+            { modelId: 'gpt-5.5', label: 'High' },
+            { modelId: 'gpt-5.5-pro', label: 'Pro' },
         ],
     },
     gemini: {
@@ -46,10 +45,9 @@ export const PROVIDER_MODEL_SLIDERS: Record<ProviderId, ProviderSliderConfig> = 
     xai: {
         provider: 'xai',
         vendorLabel: 'Grok',
-        defaultModelId: 'grok-4.20-multi-agent-beta-latest',
+        defaultModelId: 'grok-4.3-latest',
         steps: [
-            { modelId: 'grok-4.20-multi-agent-beta-latest', label: 'Fast' },
-            { modelId: 'grok-4.20-multi-agent-beta-latest-deep', label: 'Deep' },
+            { modelId: 'grok-4.3-latest', label: 'Latest' },
         ],
     },
 };

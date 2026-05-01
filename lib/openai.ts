@@ -16,6 +16,8 @@ export interface OpenAIContentPart {
         url: string;
         detail?: 'low' | 'high' | 'auto';
     };
+    filename?: string;
+    file_data?: string;
     [key: string]: unknown;
 }
 
@@ -69,21 +71,15 @@ function resolveWebSearchTool(): OpenAIResponsesTool | null {
     return { type: 'web_search' };
 }
 
-function shouldEnableCodeInterpreter(requestedModel: string, resolvedModelName: string): boolean {
+function shouldEnableCodeInterpreter(requestedModel: string): boolean {
     const codeInterpreterEnabled = parseBooleanEnv('OPENAI_ENABLE_CODE_INTERPRETER', false);
     if (!codeInterpreterEnabled) return false;
 
-    const requested = requestedModel.toLowerCase();
-    if (requested === 'gpt-5.4-pro') return false;
-    if (requested === 'gpt-5.4-low' || requested === 'gpt-5.4' || requested === 'gpt-5.4-high') return true;
-
-    const resolved = resolvedModelName.toLowerCase();
-    return resolved.includes('gpt-5.4') && !resolved.includes('gpt-5.4-pro');
+    return requestedModel.toLowerCase() === 'gpt-5.5';
 }
 
 function buildOpenAITools(
-    resolvedModelName: string,
-    requestedModel: string,
+    model: string,
     options?: { forceWebOnly?: boolean }
 ): OpenAIResponsesTool[] {
     if (parseBooleanEnv('OPENAI_FORCE_DISABLE_TOOLS', false)) return [];
@@ -92,7 +88,7 @@ function buildOpenAITools(
     const webSearchTool = resolveWebSearchTool();
     if (webSearchTool) tools.push(webSearchTool);
 
-    if (!options?.forceWebOnly && shouldEnableCodeInterpreter(requestedModel, resolvedModelName)) {
+    if (!options?.forceWebOnly && shouldEnableCodeInterpreter(model)) {
         tools.push({ type: 'code_interpreter', container: { type: 'auto' } });
     }
 
@@ -115,20 +111,10 @@ function isToolCompatibilityError(status: number, errorBody: string): boolean {
     return hasToolHint && hasCompatibilityHint;
 }
 
-function isNonProGpt54Model(requestedModel: string, resolvedModelName: string): boolean {
-    const requested = requestedModel.toLowerCase();
-    if (requested === 'gpt-5.4-pro') return false;
-    if (requested === 'gpt-5.4-low' || requested === 'gpt-5.4' || requested === 'gpt-5.4-high') return true;
-
-    const resolved = resolvedModelName.toLowerCase();
-    return resolved.includes('gpt-5.4') && !resolved.includes('pro');
-}
-
 function resolveResponsesOutputControls(
-    requestedModel: string,
-    resolvedModelName: string
+    requestedModel: string
 ): { summary: OpenAIReasoningSummaryMode; verbosity: OpenAITextVerbosity } {
-    if (isNonProGpt54Model(requestedModel, resolvedModelName)) {
+    if (requestedModel.toLowerCase() === 'gpt-5.5') {
         return { summary: 'concise', verbosity: 'medium' };
     }
 
@@ -136,16 +122,15 @@ function resolveResponsesOutputControls(
 }
 
 function buildResponsesRequestBody(
-    modelName: string,
-    requestedModel: string,
+    model: string,
     effort: 'low' | 'medium' | 'high',
     input: unknown,
     tools: OpenAIResponsesTool[]
 ): Record<string, unknown> {
-    const controls = resolveResponsesOutputControls(requestedModel, modelName);
+    const controls = resolveResponsesOutputControls(model);
 
     const body: Record<string, unknown> = {
-        model: modelName,
+        model,
         stream: true,
         reasoning: { effort: effort, summary: controls.summary },
         text: { verbosity: controls.verbosity },
@@ -198,22 +183,8 @@ export async function* streamOpenAIResponse(
     model: string,
     effort: 'low' | 'medium' | 'high' = 'high'
 ): AsyncGenerator<OpenAIStreamEvent> {
-    let modelName: string;
-    if (model === 'gpt-5.4-low') {
-        modelName = process.env.OPENAI_MODEL_LOW || process.env.OPENAI_MODEL || 'gpt-5.4';
-    } else if (model === 'gpt-5.4-high') {
-        modelName = process.env.OPENAI_MODEL_HIGH || 'gpt-5.4';
-    } else if (model === 'gpt-5.4-pro') {
-        // "GPT 5.4 (Pro)" display tier maps to a dedicated backend model.
-        modelName = process.env.OPENAI_MODEL_PRO || 'gpt-5.4-pro';
-    } else if (model === 'gpt-5-nano') {
-        modelName = 'gpt-5-nano';
-    } else {
-        modelName = model;
-    }
-
     // Check if we need to use the custom GPT-5 format
-    const useResponsesApi = modelName.includes('5.') || modelName.startsWith('gpt-5');
+    const useResponsesApi = model.includes('5.') || model.startsWith('gpt-5');
     if (useResponsesApi) {
         const input = messages
             .map(msg => {
@@ -264,15 +235,15 @@ export async function* streamOpenAIResponse(
             })
             .filter(item => Array.isArray(item.content) && item.content.length > 0);
 
-        const initialTools = buildOpenAITools(modelName, model);
+        const initialTools = buildOpenAITools(model);
         let response = await requestResponsesStream(
-            buildResponsesRequestBody(modelName, model, effort, input, initialTools)
+            buildResponsesRequestBody(model, effort, input, initialTools)
         );
 
         if (!response.ok) {
             const errorBody = await response.text();
 
-            const webOnlyTools = buildOpenAITools(modelName, model, { forceWebOnly: true });
+            const webOnlyTools = buildOpenAITools(model, { forceWebOnly: true });
             const shouldRetryWebOnly = (
                 isToolCompatibilityError(response.status, errorBody) &&
                 webOnlyTools.length > 0 &&
@@ -281,7 +252,7 @@ export async function* streamOpenAIResponse(
 
             if (shouldRetryWebOnly) {
                 response = await requestResponsesStream(
-                    buildResponsesRequestBody(modelName, model, effort, input, webOnlyTools)
+                    buildResponsesRequestBody(model, effort, input, webOnlyTools)
                 );
 
                 if (!response.ok) {
@@ -409,13 +380,13 @@ export async function* streamOpenAIResponse(
         const requestOptions: OpenAI.Chat.ChatCompletionCreateParams & {
             reasoning_effort?: 'low' | 'medium' | 'high';
         } = {
-            model: modelName,
+            model,
             messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
             stream: true,
         };
 
         // Add reasoning effort only for o-series models (o1, o3, etc) which support it
-        if (modelName.startsWith('o1') || modelName.startsWith('o3')) {
+        if (model.startsWith('o1') || model.startsWith('o3')) {
             requestOptions.reasoning_effort = effort;
         }
 

@@ -40,7 +40,6 @@ export interface XAIStreamEvent {
     content?: string;
 }
 
-type XAIReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
 type XAIProviderLike = Pick<XaiProvider, 'responses' | 'tools'>;
 type XAIRawInputMessage =
     | {
@@ -71,11 +70,6 @@ interface XAIStreamRequest {
     system?: string;
     messages: ModelMessage[];
     tools: ToolSet;
-    providerOptions: {
-        xai: {
-            reasoning: { effort: XAIReasoningEffort };
-        };
-    };
 }
 
 interface XAIStreamPart {
@@ -95,7 +89,6 @@ type XAIStreamRunner = (
 interface XAIDirectRequest {
     messages: XAIMessage[];
     model: string;
-    reasoningEffort: XAIReasoningEffort;
     systemInstruction?: string;
 }
 
@@ -103,8 +96,6 @@ type XAIDirectRunner = (
     request: XAIDirectRequest
 ) => AsyncIterable<XAIStreamEvent> | AsyncGenerator<XAIStreamEvent>;
 
-const DEFAULT_GROK_MULTI_AGENT_MODEL = 'grok-4.20-multi-agent-beta-latest';
-const GROK_MULTI_AGENT_DEEP_MODEL = 'grok-4.20-multi-agent-beta-latest-deep';
 const DEFAULT_XAI_PDF_FILENAME = 'document.pdf';
 const XAI_API_BASE_URL = 'https://api.x.ai/v1';
 
@@ -464,9 +455,6 @@ async function* defaultDirectRunner(request: XAIDirectRequest): AsyncGenerator<X
         const body = {
             model: request.model,
             stream: true,
-            reasoning: {
-                effort: request.reasoningEffort,
-            },
             tools: [{ type: 'web_search' }, { type: 'x_search' }, { type: 'code_execution' }],
             tool_choice: 'auto',
             input,
@@ -586,7 +574,6 @@ const defaultStreamRunner: XAIStreamRunner = (request) => {
         system: request.system,
         messages: request.messages,
         tools: request.tools,
-        providerOptions: request.providerOptions,
     });
 };
 
@@ -649,21 +636,6 @@ export function buildXAIUserContent(options: BuildXAIUserContentOptions): string
     return parts;
 }
 
-export function resolveXAIModelName(model: string): string {
-    if (
-        model === DEFAULT_GROK_MULTI_AGENT_MODEL ||
-        model === GROK_MULTI_AGENT_DEEP_MODEL
-    ) {
-        return process.env.XAI_MODEL_GROK_MULTI_AGENT || DEFAULT_GROK_MULTI_AGENT_MODEL;
-    }
-
-    return model;
-}
-
-export function resolveXAIReasoningEffort(model: string): XAIReasoningEffort {
-    if (model === GROK_MULTI_AGENT_DEEP_MODEL) return 'high';
-    return 'medium';
-}
 
 export function buildXAITools(provider: Pick<XAIProviderLike, 'tools'>): ToolSet {
     return {
@@ -680,14 +652,10 @@ export async function* streamXAIResponse(
     provider?: XAIProviderLike,
     directRunner: XAIDirectRunner = defaultDirectRunner
 ): AsyncGenerator<XAIStreamEvent> {
-    const resolvedModelName = resolveXAIModelName(model);
-    const reasoningEffort = resolveXAIReasoningEffort(model);
-
     if (requiresDirectResponses(messages)) {
         yield* directRunner({
             messages,
-            model: resolvedModelName,
-            reasoningEffort,
+            model,
             systemInstruction,
         });
         return;
@@ -695,15 +663,10 @@ export async function* streamXAIResponse(
 
     const resolvedProvider = provider ?? createConfiguredXAIProvider();
     const request: XAIStreamRequest = {
-        model: resolvedProvider.responses(resolvedModelName),
+        model: resolvedProvider.responses(model),
         system: systemInstruction,
         messages: normalizeMessages(messages),
         tools: buildXAITools(resolvedProvider),
-        providerOptions: {
-            xai: {
-                reasoning: { effort: reasoningEffort },
-            },
-        },
     };
 
     const result = await runner(request);

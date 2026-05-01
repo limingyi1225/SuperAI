@@ -3,43 +3,8 @@ import assert from 'node:assert/strict';
 import {
     buildXAIUserContent,
     buildXAITools,
-    resolveXAIModelName,
-    resolveXAIReasoningEffort,
     streamXAIResponse,
 } from '../lib/xai.ts';
-
-test('resolveXAIModelName maps both grok presets to the same backend slug', () => {
-    const originalModel = process.env.XAI_MODEL_GROK_MULTI_AGENT;
-    process.env.XAI_MODEL_GROK_MULTI_AGENT = 'grok-custom-slug';
-
-    try {
-        assert.equal(
-            resolveXAIModelName('grok-4.20-multi-agent-beta-latest'),
-            'grok-custom-slug'
-        );
-        assert.equal(
-            resolveXAIModelName('grok-4.20-multi-agent-beta-latest-deep'),
-            'grok-custom-slug'
-        );
-    } finally {
-        if (originalModel === undefined) {
-            delete process.env.XAI_MODEL_GROK_MULTI_AGENT;
-        } else {
-            process.env.XAI_MODEL_GROK_MULTI_AGENT = originalModel;
-        }
-    }
-});
-
-test('resolveXAIReasoningEffort maps fast and deep presets to documented SDK efforts', () => {
-    assert.equal(
-        resolveXAIReasoningEffort('grok-4.20-multi-agent-beta-latest'),
-        'medium'
-    );
-    assert.equal(
-        resolveXAIReasoningEffort('grok-4.20-multi-agent-beta-latest-deep'),
-        'high'
-    );
-});
 
 test('buildXAITools enables web_search and x_search', () => {
     const fakeProvider = {
@@ -101,7 +66,7 @@ test('streamXAIResponse throws when XAI_API_KEY is missing', async () => {
             async () => {
                 for await (const event of streamXAIResponse(
                     [{ role: 'user', content: 'Hello' }],
-                    'grok-4.20-multi-agent-beta-latest'
+                    'grok-4.3-latest'
                 )) {
                     throw new Error(`Unexpected stream event: ${JSON.stringify(event)}`);
                 }
@@ -134,7 +99,7 @@ test('streamXAIResponse yields answer deltas without reasoning summary events', 
 
         for await (const event of streamXAIResponse(
             [{ role: 'user', content: 'Hello' }],
-            'grok-4.20-multi-agent-beta-latest',
+            'grok-4.3-latest',
             undefined,
             fakeRunner,
             {
@@ -184,7 +149,7 @@ test('streamXAIResponse forwards text reasoning summary events from fullStream',
 
         for await (const event of streamXAIResponse(
             [{ role: 'user', content: 'Analyze this problem carefully' }],
-            'grok-4.20-multi-agent-beta-latest',
+            'grok-4.3-latest',
             undefined,
             fakeRunner,
             {
@@ -204,6 +169,7 @@ test('streamXAIResponse forwards text reasoning summary events from fullStream',
                 content: 'Analyze this problem carefully',
             },
         ]);
+        assert.equal(capturedRequest.providerOptions, undefined);
 
         assert.deepEqual(events, [
             { type: 'reasoning_summary_delta', content: 'first thought' },
@@ -246,7 +212,7 @@ test('streamXAIResponse uses direct xAI responses flow for pdf attachments', asy
                     pdfs: ['pdf-base64'],
                 }),
             }],
-            'grok-4.20-multi-agent-beta-latest',
+            'grok-4.3-latest',
             'system prompt',
             fakeRunner,
             undefined,
@@ -269,8 +235,7 @@ test('streamXAIResponse uses direct xAI responses flow for pdf attachments', asy
                     },
                 ],
             }],
-            model: 'grok-4.20-multi-agent-beta-latest',
-            reasoningEffort: 'medium',
+            model: 'grok-4.3-latest',
             systemInstruction: 'system prompt',
         });
         assert.deepEqual(events, [

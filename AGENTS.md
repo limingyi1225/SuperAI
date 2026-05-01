@@ -35,7 +35,6 @@ middleware.ts              — Basic HTTP Auth (all routes)
 
 - `/liquid glass/` and `components/LiquidGlass/` were removed (dead experiments).
 - `lib/claude.ts` uses `@anthropic-ai/sdk` for Claude API streaming.
-- `pdf-parse` must be dynamically imported in `/api/upload` — static import breaks the build.
 - `next.config.ts` must keep `output: "standalone"` — required for deployment.
 - CSS uses CSS Modules (`*.module.css`) alongside Tailwind. Follow existing patterns.
 - Path alias: `@/*` maps to project root.
@@ -44,7 +43,7 @@ middleware.ts              — Basic HTTP Auth (all routes)
 
 API keys: `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `ANTHROPIC_API_KEY`, `XAI_API_KEY`.
 
-Model overrides: `OPENAI_MODEL_LOW`, `OPENAI_MODEL_HIGH`, `OPENAI_MODEL_PRO`, `GEMINI_MODEL`, `CLAUDE_MODEL_OPUS`, `CLAUDE_MODEL_SONNET`, `XAI_MODEL_GROK_MULTI_AGENT`. OpenAI defaults target `gpt-5.4`, `gpt-5.4`, and `gpt-5.4-pro`.
+Model overrides: `GEMINI_MODEL`, `CLAUDE_MODEL_OPUS`, `CLAUDE_MODEL_SONNET`. OpenAI hardcoded to `gpt-5.5` / `gpt-5.5-pro`. Grok hardcoded to `grok-4.3-latest`.
 
 Auth: `AUTH_ENABLED=true`, `AUTH_USERS=user:pass`, `AUTH_REALM=IsabbY`. Set `AUTH_ENABLED=false` for local dev.
 

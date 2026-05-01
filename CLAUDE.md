@@ -41,7 +41,7 @@ tests/                     # *.test.mjs using Node built-in test runner
 
 **SSE Streaming**: `/api/ask` uses `TransformStream` to stream per-model responses in parallel. Event types: `start`, `chunk`, `reasoning_summary_*`, `done`, `error`, `complete`.
 
-**Model IDs via env vars**: `gpt-5.4-low/high/pro` resolve through `OPENAI_MODEL_LOW/HIGH/PRO`. Claude models via `CLAUDE_MODEL_OPUS/SONNET`. Gemini via `GEMINI_MODEL`. Grok multi-agent uses `XAI_MODEL_GROK_MULTI_AGENT`.
+**Model IDs**: OpenAI hardcoded to `gpt-5.5` / `gpt-5.5-pro`. Grok hardcoded to `grok-4.3-latest` (no `reasoning_effort` — 4.3 reasons automatically). Claude via `CLAUDE_MODEL_OPUS/SONNET`. Gemini via `GEMINI_MODEL`.
 
 **Tool fallback chains**: OpenAI and Gemini try full tools → search only → no tools. Set `OPENAI_FORCE_DISABLE_TOOLS=true` or `GEMINI_FORCE_DISABLE_TOOLS=true` to skip tools entirely. Claude always sends web search + code execution tools (no fallback).
 
@@ -66,24 +66,25 @@ GOOGLE_AI_API_KEY=
 ANTHROPIC_API_KEY=
 XAI_API_KEY=
 
-# Model overrides
-OPENAI_MODEL_LOW=gpt-5.4
-OPENAI_MODEL_HIGH=gpt-5.4
-OPENAI_MODEL_PRO=gpt-5.4-pro
+# Model overrides (main OpenAI/Grok models are hardcoded — only the title generator is overridable)
+OPENAI_MODEL_TITLE=                      # Override title-generator model (default gpt-5-nano)
 GEMINI_MODEL=gemini-3.1-pro-preview  # frontend model ID is gemini-3.1-pro; fallback default is gemini-2.0-flash
 CLAUDE_MODEL_OPUS=claude-opus-4-7
 CLAUDE_MODEL_SONNET=claude-sonnet-4-6
-XAI_MODEL_GROK_MULTI_AGENT=grok-4.20-multi-agent-experimental-beta-0304
 
 # Tool toggles (default: web search on, code execution varies)
 OPENAI_ENABLE_WEB_SEARCH=true
 OPENAI_ENABLE_CODE_INTERPRETER=false
 OPENAI_WEB_SEARCH_CONTEXT_SIZE=medium    # low | medium | high
+OPENAI_WEB_SEARCH_TOOL_TYPE=             # web_search (default) | web_search_preview
+OPENAI_FORCE_DISABLE_TOOLS=false
 GEMINI_ENABLE_GOOGLE_SEARCH=true
 GEMINI_ENABLE_CODE_EXECUTION=true
+GEMINI_FORCE_DISABLE_TOOLS=false
 CLAUDE_ENABLE_THINKING=true
 CLAUDE_WEB_SEARCH_MAX_USES=3
 CLAUDE_OUTPUT_EFFORT=                    # Override effort level for Claude
+CLAUDE_TOOL_PAUSE_TURN_MAX=5             # Auto-resume cap for Claude pause_turn
 
 # Auth (Basic HTTP Auth via middleware.ts)
 AUTH_ENABLED=true
@@ -102,7 +103,6 @@ AUTH_REALM=IsabbY
 
 ## Gotchas
 
-- `pdf-parse` uses dynamic import in `/api/upload` to avoid bundling issues
 - `npm test` runs the Node built-in test runner against `tests/*.test.mjs`
 - `middleware.ts` Basic Auth applies to all routes including API; disable in dev via `AUTH_ENABLED=false`
 - `lib/claude.ts` uses `@anthropic-ai/sdk` for Claude API streaming

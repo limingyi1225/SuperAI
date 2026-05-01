@@ -48,25 +48,20 @@ These are optional and control tool behavior for the OpenAI Responses API path:
 - `OPENAI_FORCE_DISABLE_TOOLS` (default: `false`)
 - `OPENAI_WEB_SEARCH_TOOL_TYPE` (optional: `web_search` or `web_search_preview`, default: `web_search`)
 
-Default OpenAI model overrides for this project now target the GPT 5.4 family:
-
-- `OPENAI_MODEL_LOW` default: `gpt-5.4`
-- `OPENAI_MODEL_HIGH` default: `gpt-5.4`
-- `OPENAI_MODEL_PRO` default: `gpt-5.4-pro`
+OpenAI model names are hardcoded — `gpt-5.5` (High tier) and `gpt-5.5-pro` (Pro tier). No env var override.
 
 ## xAI Environment Variables
 
-These are optional unless you use Grok models:
-
 - `XAI_API_KEY` (required for Grok)
-- `XAI_MODEL_GROK_MULTI_AGENT` (default: `grok-4.20-multi-agent-experimental-beta-0304`)
 
 ### Grok Notes
 
-- Grok is integrated through the JavaScript xAI SDK path: `ai` + `@ai-sdk/xai`.
-- The app exposes two Grok presets: Fast (`reasoningEffort=medium`) and Deep (`reasoningEffort=high`).
-- Only built-in `web_search` is enabled for Grok in this app.
-- Grok multi-agent is currently text-only in this app; image/PDF requests return a per-model error instead of silently degrading.
+- Grok is hardcoded to `grok-4.3-latest`. No env var override.
+- `grok-4.3-latest` reasons automatically — `reasoning_effort` is **not sent** (the API rejects it on this model).
+- Tools enabled depend on path:
+  - Text-only requests go through the AI SDK and get `web_search` + `x_search`.
+  - Image / PDF requests go through the direct Responses API path and additionally get `code_execution`.
+- Image and PDF inputs are supported via the direct Responses API path.
 
 ## Gemini Tools Environment Variables
 

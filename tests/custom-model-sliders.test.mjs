@@ -11,18 +11,18 @@ import {
 
 test('normalizeProviderModelSelection returns selected providers in stable order', () => {
     const selection = normalizeProviderModelSelection([
-        'gpt-5.4-high',
+        'gpt-5.5',
         'gemini-3.1-pro-medium',
-        'gpt-5.4-pro',
+        'gpt-5.5-pro',
         'claude-opus-4-7',
-        'grok-4.20-multi-agent-beta-latest-deep',
+        'grok-4.3-latest',
     ]);
 
     assert.deepEqual(selection, [
-        'gpt-5.4-high',
+        'gpt-5.5',
         'gemini-3.1-pro-medium',
         'claude-opus-4-7',
-        'grok-4.20-multi-agent-beta-latest-deep',
+        'grok-4.3-latest',
     ]);
 });
 
@@ -40,71 +40,71 @@ test('ensureAtLeastOneProviderModelSelection falls back to openai default', () =
 
 test('setProviderModelSelection swaps only the targeted provider', () => {
     const next = setProviderModelSelection(
-        ['gpt-5.4', 'gemini-3.1-pro-medium'],
+        ['gpt-5.5', 'gemini-3.1-pro-medium'],
         'openai',
-        'gpt-5.4-pro'
+        'gpt-5.5-pro'
     );
 
-    assert.deepEqual(next, ['gpt-5.4-pro', 'gemini-3.1-pro-medium']);
+    assert.deepEqual(next, ['gpt-5.5-pro', 'gemini-3.1-pro-medium']);
 });
 
 test('setProviderModelSelection ignores invalid model ids', () => {
     const next = setProviderModelSelection(
-        ['gpt-5.4', 'gemini-3.1-pro-medium'],
+        ['gpt-5.5', 'gemini-3.1-pro-medium'],
         'gemini',
-        'gpt-5.4-pro'
+        'gpt-5.5-pro'
     );
 
-    assert.deepEqual(next, ['gpt-5.4', 'gemini-3.1-pro-medium']);
+    assert.deepEqual(next, ['gpt-5.5', 'gemini-3.1-pro-medium']);
 });
 
 test('toggleProviderSelection can disable providers but keeps at least one', () => {
     const onlyOpenAI = toggleProviderSelection(
-        ['gpt-5.4', 'gemini-3.1-pro-medium'],
+        ['gpt-5.5', 'gemini-3.1-pro-medium'],
         'gemini'
     );
-    assert.deepEqual(onlyOpenAI, ['gpt-5.4']);
+    assert.deepEqual(onlyOpenAI, ['gpt-5.5']);
 
     const cannotDisableLast = toggleProviderSelection(
         onlyOpenAI,
         'openai'
     );
-    assert.deepEqual(cannotDisableLast, ['gpt-5.4']);
+    assert.deepEqual(cannotDisableLast, ['gpt-5.5']);
 
     const reenableGemini = toggleProviderSelection(
         cannotDisableLast,
         'gemini'
     );
-    assert.deepEqual(reenableGemini, ['gpt-5.4', PROVIDER_MODEL_SLIDERS.gemini.defaultModelId]);
+    assert.deepEqual(reenableGemini, ['gpt-5.5', PROVIDER_MODEL_SLIDERS.gemini.defaultModelId]);
 });
 
 test('setProviderModelOrOff supports off option while keeping at least one model', () => {
-    const oneModel = setProviderModelOrOff(['gpt-5.4', 'gemini-3.1-pro-medium'], 'gemini', null);
-    assert.deepEqual(oneModel, ['gpt-5.4']);
+    const oneModel = setProviderModelOrOff(['gpt-5.5', 'gemini-3.1-pro-medium'], 'gemini', null);
+    assert.deepEqual(oneModel, ['gpt-5.5']);
 
     const stillOne = setProviderModelOrOff(oneModel, 'openai', null);
-    assert.deepEqual(stillOne, ['gpt-5.4']);
+    assert.deepEqual(stillOne, ['gpt-5.5']);
 
     const reenable = setProviderModelOrOff(stillOne, 'claude', 'claude-opus-4-7');
-    assert.deepEqual(reenable, ['gpt-5.4', 'claude-opus-4-7']);
+    assert.deepEqual(reenable, ['gpt-5.5', 'claude-opus-4-7']);
 });
 
 test('toggleProviderSelection enables grok with its default preset', () => {
-    const next = toggleProviderSelection(['gpt-5.4', 'claude-opus-4-7'], 'xai');
+    const next = toggleProviderSelection(['gpt-5.5', 'claude-opus-4-7'], 'xai');
 
     assert.deepEqual(next, [
-        'gpt-5.4',
+        'gpt-5.5',
         'claude-opus-4-7',
         PROVIDER_MODEL_SLIDERS.xai.defaultModelId,
     ]);
 });
 
-test('setProviderModelSelection swaps grok preset without affecting other providers', () => {
+test('setProviderModelSelection setting grok to its only preset is a no-op when already active', () => {
     const next = setProviderModelSelection(
-        ['gpt-5.4', 'grok-4.20-multi-agent-beta-latest'],
+        ['gpt-5.5', 'grok-4.3-latest'],
         'xai',
-        'grok-4.20-multi-agent-beta-latest-deep'
+        'grok-4.3-latest'
     );
 
-    assert.deepEqual(next, ['gpt-5.4', 'grok-4.20-multi-agent-beta-latest-deep']);
+    assert.deepEqual(next, ['gpt-5.5', 'grok-4.3-latest']);
 });

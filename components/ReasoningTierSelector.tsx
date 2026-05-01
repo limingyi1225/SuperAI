@@ -23,13 +23,6 @@ interface ReasoningTierSelectorProps {
 const TIERS: TierId[] = ['deep', 'custom'];
 
 function TierIcon({ tier }: { tier: TierId }) {
-    if (tier === 'fast') {
-        return (
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 1.5L4 9h4l-1 5.5L12 7H8l1-5.5z" />
-            </svg>
-        );
-    }
     if (tier === 'deep') {
         return (
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
