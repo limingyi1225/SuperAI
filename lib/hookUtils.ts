@@ -86,7 +86,7 @@ export function mapApiFilesToUploadedFiles(
 
 // ----- useDragDrop utils -----
 
-export interface ComputeDragStateResult {
+interface ComputeDragStateResult {
   counter: number;
   isDragging: boolean;
 }
