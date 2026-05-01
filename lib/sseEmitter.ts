@@ -15,7 +15,13 @@ export type SSEWriter = WritableStreamDefaultWriter<Uint8Array>;
 const encoder = new TextEncoder();
 
 export async function writeSSE(writer: SSEWriter, payload: Record<string, unknown>): Promise<void> {
-    await writer.write(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+    try {
+        await writer.write(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+    } catch {
+        // Writer is closed/errored — likely client disconnected or another
+        // parallel stream errored and tore down the writer. Swallow so
+        // sibling Promise.all branches don't unwind through .catch.
+    }
 }
 
 /**

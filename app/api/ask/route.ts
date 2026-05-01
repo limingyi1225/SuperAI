@@ -4,6 +4,7 @@ import { streamGeminiResponse, GeminiContentPart, GeminiConversationContent } fr
 import { streamClaudeResponse, ClaudeContentPart, ClaudeMessage } from '@/lib/claude';
 import { buildXAIUserContent, streamXAIResponse, XAIMessage } from '@/lib/xai';
 import { normalizeModelId, resolveRequestedModels } from '@/lib/models';
+import { MAX_HISTORY_TURNS, MAX_CHARS_PER_TURN } from '@/lib/hookUtils';
 import {
     toGeminiInlineData,
     toGeminiPdfPart,
@@ -29,9 +30,6 @@ interface ConversationTurn {
     modelAnswers?: Record<string, string>;
     userImages?: string[];
 }
-
-const MAX_HISTORY_TURNS = 8;
-const MAX_CHARS_PER_TURN = 12000;
 
 function clipText(value: string, maxChars = MAX_CHARS_PER_TURN): string {
     return value.length > maxChars ? value.slice(0, maxChars) : value;
@@ -109,10 +107,38 @@ function getAssistantTextForModel(
     return undefined;
 }
 
+const MAX_REQUEST_BYTES = 80 * 1024 * 1024; // 80 MB — base64 inflates raw bytes ~1.33×
+
+function isDataUrlOrBase64(value: unknown): value is string {
+    if (typeof value !== 'string' || !value) return false;
+    if (value.startsWith('data:')) return true;
+    // Allow plain base64 (no data: prefix) — providers wrap it themselves.
+    return !/^https?:/i.test(value);
+}
+
 export async function POST(request: NextRequest) {
     try {
+        const contentLengthHeader = request.headers.get('content-length');
+        if (contentLengthHeader) {
+            const contentLength = Number(contentLengthHeader);
+            if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+                return new Response(
+                    JSON.stringify({ error: `Request body exceeds size limit (${MAX_REQUEST_BYTES / 1024 / 1024} MB)` }),
+                    { status: 413, headers: { 'Content-Type': 'application/json' } }
+                );
+            }
+        }
+
         const body: AskRequest = await request.json();
-        const { question, images = [], pdfs = [], models = [], language = 'Chinese', history = [] } = body;
+        const { question, images: rawImages = [], pdfs: rawPdfs = [], models = [], language: rawLanguage, history = [] } = body;
+
+        // Validate language enum to avoid log injection and unintended prompt branches.
+        const language: 'Chinese' | 'English' = rawLanguage === 'English' ? 'English' : 'Chinese';
+
+        // Reject http(s):// inputs — only data: URIs or raw base64 are expected for images/pdfs.
+        const images: string[] = Array.isArray(rawImages) ? rawImages.filter(isDataUrlOrBase64) : [];
+        const pdfs: string[] = Array.isArray(rawPdfs) ? rawPdfs.filter(isDataUrlOrBase64) : [];
+
         const sanitizedHistory = sanitizeHistory(history);
         const requestedModels = Array.isArray(models)
             ? models.filter((modelId): modelId is string => typeof modelId === 'string')
@@ -188,7 +214,7 @@ Output language requirement: respond in English.`
                         const content: OpenAIContentPart[] = [];
 
                         for (const pdf of pdfs) {
-                            content.push({ type: 'input_file', filename: 'document.pdf', file_data: pdf } as unknown as OpenAIContentPart);
+                            content.push({ type: 'input_file', filename: 'document.pdf', file_data: pdf });
                         }
 
                         if (question.trim()) {
@@ -390,7 +416,22 @@ Output language requirement: respond in English.`
             }
         };
 
-        processModels();
+        processModels().catch(async err => {
+            console.error('[Ask API] processModels crashed:', err);
+            try {
+                await writeSSE(writer, {
+                    type: 'error',
+                    error: err instanceof Error ? err.message : 'stream failed',
+                });
+            } catch {
+                // writer may already be closed
+            }
+            try {
+                await writer.close();
+            } catch {
+                // already closed
+            }
+        });
 
         return new Response(stream.readable, {
             headers: {

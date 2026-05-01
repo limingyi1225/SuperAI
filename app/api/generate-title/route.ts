@@ -34,7 +34,12 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        return new Response(JSON.stringify({ title: title.trim() }), {
+        const trimmed = title.trim();
+        // If the model returned nothing usable, fall back to a question-derived stub
+        // so the client never persists an empty title.
+        const finalTitle = trimmed || (typeof question === 'string' ? question.trim().slice(0, 30) : '') || 'Untitled';
+
+        return new Response(JSON.stringify({ title: finalTitle }), {
             headers: { 'Content-Type': 'application/json' },
         });
     } catch (error) {
