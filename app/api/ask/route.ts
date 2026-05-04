@@ -5,6 +5,8 @@ import { streamClaudeResponse, ClaudeContentPart, ClaudeMessage } from '@/lib/cl
 import { buildXAIUserContent, streamXAIResponse, XAIMessage } from '@/lib/xai';
 import { normalizeModelId, resolveRequestedModels } from '@/lib/models';
 import { MAX_HISTORY_TURNS, MAX_CHARS_PER_TURN } from '@/lib/hookUtils';
+import { buildSystemPrompt } from '@/lib/systemPrompts';
+import { isAssistantMode, type AssistantMode } from '@/lib/assistantMode';
 import {
     toGeminiInlineData,
     toGeminiPdfPart,
@@ -22,6 +24,7 @@ interface AskRequest {
     pdfs?: string[];
     models: string[];
     language?: 'Chinese' | 'English';
+    mode?: AssistantMode;
     history?: ConversationTurn[];
 }
 
@@ -130,10 +133,12 @@ export async function POST(request: NextRequest) {
         }
 
         const body: AskRequest = await request.json();
-        const { question, images: rawImages = [], pdfs: rawPdfs = [], models = [], language: rawLanguage, history = [] } = body;
+        const { question, images: rawImages = [], pdfs: rawPdfs = [], models = [], language: rawLanguage, mode: rawMode, history = [] } = body;
 
         // Validate language enum to avoid log injection and unintended prompt branches.
         const language: 'Chinese' | 'English' = rawLanguage === 'English' ? 'English' : 'Chinese';
+        // Default to 'solver' for backward compat with older clients.
+        const mode: AssistantMode = isAssistantMode(rawMode) ? rawMode : 'solver';
 
         // Reject http(s):// inputs — only data: URIs or raw base64 are expected for images/pdfs.
         const images: string[] = Array.isArray(rawImages) ? rawImages.filter(isDataUrlOrBase64) : [];
@@ -150,7 +155,7 @@ export async function POST(request: NextRequest) {
             .map(model => `${model.requestedId}->${model.canonicalId}`);
 
         console.log(
-            `[Ask API] Processing request. Language: ${language}, Requested Models: ${requestedModels.join(', ')}, Canonical Models: ${resolvedModels.map(model => model.canonicalId).join(', ')}, Aliases: ${normalizedAliases.join(', ') || 'none'}, Current images: ${images.length}, Current PDFs: ${pdfs.length}, History turns: ${sanitizedHistory.length}, History turns with images: ${sanitizedHistory.filter(t => t.userImages && t.userImages.length > 0).length}`
+            `[Ask API] Processing request. Mode: ${mode}, Language: ${language}, Requested Models: ${requestedModels.join(', ')}, Canonical Models: ${resolvedModels.map(model => model.canonicalId).join(', ')}, Aliases: ${normalizedAliases.join(', ') || 'none'}, Current images: ${images.length}, Current PDFs: ${pdfs.length}, History turns: ${sanitizedHistory.length}, History turns with images: ${sanitizedHistory.filter(t => t.userImages && t.userImages.length > 0).length}`
         );
 
         if (!question && images.length === 0 && pdfs.length === 0) {
@@ -192,22 +197,15 @@ export async function POST(request: NextRequest) {
                     if (clientAborted.flag) return;
                     await writeSSE(writer, { type: 'start', modelId, modelName: modelConfig.name });
 
-                    const systemPrompt = language === 'English'
-                        ? `You are an expert problem-solving assistant. You will receive questions (e.g., math, chemistry, economics) from users. Your task is to:
+                    const systemPrompt = buildSystemPrompt(modelConfig.provider, mode, language);
 
-1. clearly state the final answer
-2. show detailed step-by-step reasoning process for solving the problem. Ensure every step is logical, complete, and easy to understand.
-
-Output language requirement: respond in English.`
-                        : `你是一名解题助手。你将收到用户提出的问题（如数学题、化学题，经济题等），你的任务是：
-
-1. 首先明确的展示答案
-2. 展示详细的解题步骤和推理过程，确保具体且易于理解。
-输出语言要求：学科专用术语必须使用英文，例如：元素、化合物、反应名、公式等，这些专用词汇不需要翻译成中文。其他的非学科专用词汇必须使用中文。`;
-
-                    const attachmentFallbackText = language === 'English'
-                        ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
-                        : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。';
+                    const attachmentFallbackText = mode === 'general'
+                        ? (language === 'English'
+                            ? 'Please look at the attached image(s)/document(s) and respond.'
+                            : '请查看附带的图片/文档并作答。')
+                        : (language === 'English'
+                            ? 'Read the problem from the image/document and answer in English. Start with final answer, then provide detailed steps.'
+                            : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。');
 
                     if (modelConfig.provider === 'openai') {
                         const openAIEffort = modelConfig.effort === 'max' ? 'high' : modelConfig.effort;

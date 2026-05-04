@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    // The immutable cache only makes sense in prod (where chunk filenames
+    // are content-hashed). In dev, Turbopack reuses the same chunk URL
+    // across recompiles, so an immutable cache pins the browser to stale
+    // bundles and breaks HMR for every editor save.
+    if (process.env.NODE_ENV !== "production") return [];
     return [
       {
         source: "/_next/static/:path*",

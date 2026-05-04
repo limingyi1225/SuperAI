@@ -2,7 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
-import { SessionProvider, useSession } from '@/context/SessionContext';
+import {
+  SessionProvider,
+  useSession,
+  readDefaultAssistantMode,
+  writeDefaultAssistantMode,
+} from '@/context/SessionContext';
+import type { AssistantMode } from '@/lib/assistantMode';
 import SessionSidebar from '@/components/SessionSidebar';
 import SettingsModal from '@/components/SettingsModal';
 import AnswerPanel from '@/components/AnswerPanel';
@@ -19,8 +25,27 @@ import { useQuestionSubmit } from '@/hooks/useQuestionSubmit';
 function MainContent() {
   const {
     currentSession, currentSessionId, createSession, addQuestion,
-    updateAnswer, renameSession, setSessionGeneratingTitle,
+    updateAnswer, renameSession, setSessionGeneratingTitle, setSessionMode,
   } = useSession();
+
+  // Default mode for new sessions (synced to localStorage). Tracks user's
+  // last choice so the settings modal shows something sensible even before
+  // any session exists.
+  const [defaultAssistantMode, setDefaultAssistantMode] = useState<AssistantMode>(
+    () => readDefaultAssistantMode()
+  );
+
+  // Active session mode drives both the request body and the settings modal.
+  // Falls back to the user's stored default before a session is created.
+  const activeAssistantMode: AssistantMode = currentSession?.mode ?? defaultAssistantMode;
+
+  const handleAssistantModeChange = (next: AssistantMode) => {
+    writeDefaultAssistantMode(next);
+    setDefaultAssistantMode(next);
+    if (currentSessionId) {
+      setSessionMode(currentSessionId, next);
+    }
+  };
 
   // Local UI state
   const [text, setText] = useState('');
@@ -56,6 +81,7 @@ function MainContent() {
   } = useQuestionSubmit({
     selectedModels,
     responseLanguage,
+    assistantMode: activeAssistantMode,
     getText: () => textRef.current,
     clearText: () => setText(''),
     messagesAreaRef,
@@ -70,7 +96,11 @@ function MainContent() {
     setSessionGeneratingTitle,
   });
 
-  // Reset local state when switching sessions
+  // Reset local state when switching sessions. The mode-switch toast is
+  // intentionally NOT triggered here — a session-id change can come from
+  // delete-driven auto-select too, which we don't want to surface as a
+  // "user switched" notification. The toast is fired from the sidebar's
+  // explicit click handler instead.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset on session change
     setText('');
@@ -147,7 +177,19 @@ function MainContent() {
 
       {/* Sidebar wrapper */}
       <div className={`${styles.sidebarWrapper} ${isSidebarOpen ? styles.open : ''}`}>
-        <SessionSidebar onSessionSelect={() => setIsSidebarOpen(false)} onOpenSettings={() => setIsSettingsOpen(true)} />
+        <SessionSidebar
+          onSessionSelect={(session) => {
+            setIsSidebarOpen(false);
+            // Only flash the mode toast for an actual switch — clicking the
+            // already-active session shouldn't notify, and delete-driven
+            // auto-selects don't go through this handler at all.
+            if (session.id !== currentSessionId) {
+              const modeLabel = (session.mode ?? 'solver') === 'general' ? 'General' : 'Solver';
+              showToast(`${session.name} · ${modeLabel} mode`, 'info');
+            }
+          }}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
       </div>
 
       {/* Global drag overlay */}
@@ -186,6 +228,8 @@ function MainContent() {
           onClose={() => setIsSettingsOpen(false)}
           currentThemeMode={themeMode}
           onThemeChange={handleThemeModeChange}
+          currentAssistantMode={activeAssistantMode}
+          onAssistantModeChange={handleAssistantModeChange}
         />
       )}
 

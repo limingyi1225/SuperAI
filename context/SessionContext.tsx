@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { AssistantMode, isAssistantMode } from '@/lib/assistantMode';
 
 export interface UploadedFile {
     id: string;
@@ -34,6 +35,7 @@ export interface Session {
     questions: Question[];
     createdAt: Date;
     isGeneratingTitle?: boolean;
+    mode?: AssistantMode;
 }
 
 /**
@@ -48,6 +50,7 @@ interface SessionActions {
     updateAnswer: (questionId: string, modelId: string, update: Partial<ModelAnswer>, sessionId?: string) => void;
     renameSession: (sessionId: string, newName: string) => void;
     setSessionGeneratingTitle: (sessionId: string, isGenerating: boolean) => void;
+    setSessionMode: (sessionId: string, mode: AssistantMode) => void;
 }
 
 interface SessionData {
@@ -63,6 +66,22 @@ const SessionActionsContext = createContext<SessionActions | null>(null);
 
 const SESSIONS_KEY = 'isbaby_sessions';
 const CURRENT_SESSION_KEY = 'isbaby_currentSessionId';
+const DEFAULT_MODE_KEY = 'isbaby_defaultMode';
+
+function readDefaultMode(): AssistantMode {
+    if (typeof window === 'undefined') return 'solver';
+    const raw = localStorage.getItem(DEFAULT_MODE_KEY);
+    return isAssistantMode(raw) ? raw : 'solver';
+}
+
+export function readDefaultAssistantMode(): AssistantMode {
+    return readDefaultMode();
+}
+
+export function writeDefaultAssistantMode(mode: AssistantMode): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(DEFAULT_MODE_KEY, mode);
+}
 
 function dateReviver(_key: string, value: unknown): unknown {
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
@@ -75,6 +94,8 @@ function normalizeSessions(sessions: Session[]): Session[] {
     return sessions.map(s => ({
         ...s,
         isGeneratingTitle: false,
+        // Pre-mode sessions get the legacy default ('solver') so behavior is unchanged.
+        mode: isAssistantMode(s.mode) ? s.mode : 'solver',
         questions: s.questions.map(q => ({
             ...q,
             answers: q.answers.map(a => ({
@@ -180,6 +201,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 name: `Session ${sessionsRef.current.length + 1}`,
                 questions: [],
                 createdAt: new Date(),
+                mode: readDefaultMode(),
             };
             setSessions(prev => [...prev, newSession]);
             setCurrentSessionId(newSession.id);
@@ -237,6 +259,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setSessionGeneratingTitle: (sessionId, isGenerating) => {
             setSessions(prev => prev.map(session =>
                 session.id === sessionId ? { ...session, isGeneratingTitle: isGenerating } : session
+            ));
+        },
+        setSessionMode: (sessionId, mode) => {
+            setSessions(prev => prev.map(session =>
+                session.id === sessionId ? { ...session, mode } : session
             ));
         },
     }), []);

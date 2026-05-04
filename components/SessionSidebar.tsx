@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { useSession } from '@/context/SessionContext';
+import { useSession, type Session } from '@/context/SessionContext';
 import styles from './SessionSidebar.module.css';
 
 interface SessionSidebarProps {
-    onSessionSelect?: () => void;
+    onSessionSelect?: (session: Session) => void;
     onOpenSettings?: () => void;
 }
 
@@ -72,7 +72,12 @@ export default function SessionSidebar({ onSessionSelect, onOpenSettings }: Sess
                         <div
                             key={session.id}
                             className={`${styles.sessionItem} ${session.id === currentSessionId ? styles.active : ''}`}
-                            onClick={() => { selectSession(session.id); onSessionSelect?.(); }}
+                            onClick={() => {
+                                if (session.id !== currentSessionId) {
+                                    selectSession(session.id);
+                                }
+                                onSessionSelect?.(session);
+                            }}
                         >
                             <div className={styles.sessionInfo}>
                                 {session.isGeneratingTitle ? (

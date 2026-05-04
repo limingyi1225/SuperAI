@@ -111,13 +111,10 @@ function isToolCompatibilityError(status: number, errorBody: string): boolean {
     return hasToolHint && hasCompatibilityHint;
 }
 
-function resolveResponsesOutputControls(
-    requestedModel: string
-): { summary: OpenAIReasoningSummaryMode; verbosity: OpenAITextVerbosity } {
-    if (requestedModel.toLowerCase() === 'gpt-5.5') {
-        return { summary: 'concise', verbosity: 'medium' };
-    }
-
+function resolveResponsesOutputControls(): {
+    summary: OpenAIReasoningSummaryMode;
+    verbosity: OpenAITextVerbosity;
+} {
     return { summary: 'auto', verbosity: 'medium' };
 }
 
@@ -127,7 +124,7 @@ function buildResponsesRequestBody(
     input: unknown,
     tools: OpenAIResponsesTool[]
 ): Record<string, unknown> {
-    const controls = resolveResponsesOutputControls(model);
+    const controls = resolveResponsesOutputControls();
 
     const body: Record<string, unknown> = {
         model,

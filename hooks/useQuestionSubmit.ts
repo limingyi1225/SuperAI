@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect, RefObject } from 'react';
 import { UploadedFile, ModelAnswer, Session, Question } from '@/context/SessionContext';
 import { AVAILABLE_MODELS } from '@/lib/models';
+import type { AssistantMode } from '@/lib/assistantMode';
 import {
   MAX_HISTORY_TURNS,
   MAX_CHARS_PER_TURN,
@@ -21,6 +22,7 @@ interface ConversationTurnPayload {
 export interface QuestionSubmitOptions {
   selectedModels: string[];
   responseLanguage: 'Chinese' | 'English';
+  assistantMode: AssistantMode;
   getText: () => string;
   clearText: () => void;
   messagesAreaRef: RefObject<HTMLDivElement | null>;
@@ -66,7 +68,7 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
 
   const submitQuestion = useCallback(async (submittedText: string, submittedFiles: UploadedFile[]) => {
     const {
-      selectedModels, responseLanguage, currentSessionId, currentSession,
+      selectedModels, responseLanguage, assistantMode, currentSessionId, currentSession,
       createSession, addQuestion, updateAnswer, renameSession, setSessionGeneratingTitle,
     } = optsRef.current;
 
@@ -204,6 +206,7 @@ export function useQuestionSubmit(opts: QuestionSubmitOptions): UseQuestionSubmi
           pdfs,
           models: selectedModels,
           language: responseLanguage,
+          mode: assistantMode,
           history,
         }),
         signal: controller.signal,

@@ -2,15 +2,25 @@
 
 import React from 'react';
 import styles from './SettingsModal.module.css';
+import type { AssistantMode } from '@/lib/assistantMode';
 
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     currentThemeMode: 'light' | 'dark' | 'auto';
     onThemeChange: (themeMode: 'light' | 'dark' | 'auto') => void;
+    currentAssistantMode: AssistantMode;
+    onAssistantModeChange: (mode: AssistantMode) => void;
 }
 
-export default function SettingsModal({ isOpen, onClose, currentThemeMode, onThemeChange }: SettingsModalProps) {
+export default function SettingsModal({
+    isOpen,
+    onClose,
+    currentThemeMode,
+    onThemeChange,
+    currentAssistantMode,
+    onAssistantModeChange,
+}: SettingsModalProps) {
     if (!isOpen) return null;
 
     return (
@@ -26,7 +36,7 @@ export default function SettingsModal({ isOpen, onClose, currentThemeMode, onThe
                 </div>
 
                 <div className={styles.scrollContent}>
-                    {/* Appearance Section */}
+                    {/* Appearance */}
                     <div className={styles.section}>
                         <h3 className={styles.sectionTitle}>Appearance</h3>
                         <div className={styles.themeToggleWrapper}>
@@ -60,6 +70,37 @@ export default function SettingsModal({ isOpen, onClose, currentThemeMode, onThe
                                 Auto
                             </button>
                         </div>
+                    </div>
+
+                    {/* Assistant Mode */}
+                    <div className={styles.section}>
+                        <h3 className={styles.sectionTitle}>Assistant Mode</h3>
+                        <div className={styles.themeToggleWrapper}>
+                            <button
+                                className={`${styles.themeOption} ${currentAssistantMode === 'solver' ? styles.active : ''}`}
+                                onClick={() => onAssistantModeChange('solver')}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                    <path d="M9 11l3 3L22 4" />
+                                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                                </svg>
+                                Solver
+                            </button>
+                            <button
+                                className={`${styles.themeOption} ${currentAssistantMode === 'general' ? styles.active : ''}`}
+                                onClick={() => onAssistantModeChange('general')}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                </svg>
+                                General
+                            </button>
+                        </div>
+                        <p className={styles.modeHint}>
+                            {currentAssistantMode === 'solver'
+                                ? 'Tutor persona — final answer first, then step-by-step reasoning.'
+                                : 'Each model uses its own native persona.'}
+                        </p>
                     </div>
                 </div>
 
