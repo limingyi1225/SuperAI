@@ -20,18 +20,11 @@ const MODEL_ID_ALIASES: Record<string, string> = {
 
 export const AVAILABLE_MODELS: ModelConfig[] = [
     {
-        id: 'gemini-3.1-pro',
-        name: 'Gemini 3.1 Pro (High)',
+        id: 'gemini-3.5-flash',
+        name: 'Gemini 3.5 Flash (High)',
         provider: 'gemini',
         effort: 'high',
-        description: 'Google Gemini 3.1 Pro with high reasoning effort',
-    },
-    {
-        id: 'gemini-3.1-pro-medium',
-        name: 'Gemini 3.1 Pro (Medium)',
-        provider: 'gemini',
-        effort: 'medium',
-        description: 'Google Gemini 3.1 Pro with medium reasoning effort',
+        description: 'Google Gemini 3.5 Flash with high reasoning effort',
     },
     {
         id: 'gpt-5.5',
@@ -87,7 +80,7 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
 export type TierId = 'deep' | 'custom';
 
 export const REASONING_TIERS: { deep: string[] } = {
-    deep: ['gemini-3.1-pro', 'gpt-5.5', 'claude-opus-4-7', 'grok-4.3-latest'],
+    deep: ['gemini-3.5-flash', 'gpt-5.5', 'claude-opus-4-7', 'grok-4.3-latest'],
 };
 
 export const TIER_LABELS: Record<TierId, string> = {
