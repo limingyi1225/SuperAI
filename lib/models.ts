@@ -28,7 +28,7 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
     },
     {
         id: 'gpt-5.5',
-        name: 'GPT 5.5',
+        name: 'GPT 5.5 (High)',
         provider: 'openai',
         effort: 'high',
         description: 'OpenAI GPT 5.5 with high reasoning effort',
@@ -70,7 +70,7 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
     },
     {
         id: 'grok-4.3-latest',
-        name: 'Grok 4.3',
+        name: 'Grok 4.3 (Auto)',
         provider: 'xai',
         effort: 'high',
         description: 'xAI Grok 4.3 with automatic reasoning and web search',
