@@ -137,8 +137,8 @@ export async function POST(request: NextRequest) {
 
         // Validate language enum to avoid log injection and unintended prompt branches.
         const language: 'Chinese' | 'English' = rawLanguage === 'English' ? 'English' : 'Chinese';
-        // Default to 'solver' for backward compat with older clients.
-        const mode: AssistantMode = isAssistantMode(rawMode) ? rawMode : 'solver';
+        // Default to 'general' when the client omits a mode.
+        const mode: AssistantMode = isAssistantMode(rawMode) ? rawMode : 'general';
 
         // Reject http(s):// inputs — only data: URIs or raw base64 are expected for images/pdfs.
         const images: string[] = Array.isArray(rawImages) ? rawImages.filter(isDataUrlOrBase64) : [];

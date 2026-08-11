@@ -69,9 +69,9 @@ const CURRENT_SESSION_KEY = 'isbaby_currentSessionId';
 const DEFAULT_MODE_KEY = 'isbaby_defaultMode';
 
 function readDefaultMode(): AssistantMode {
-    if (typeof window === 'undefined') return 'solver';
+    if (typeof window === 'undefined') return 'general';
     const raw = localStorage.getItem(DEFAULT_MODE_KEY);
-    return isAssistantMode(raw) ? raw : 'solver';
+    return isAssistantMode(raw) ? raw : 'general';
 }
 
 export function readDefaultAssistantMode(): AssistantMode {
