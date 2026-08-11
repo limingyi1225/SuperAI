@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { detectImageMimeType } from '@/lib/mediaParts';
 
 export const runtime = 'nodejs';
 
@@ -73,9 +74,17 @@ export async function POST(request: NextRequest) {
             }
 
             if (IMAGE_MIME_ALLOWLIST.has(mimeType)) {
+                const detectedMimeType = detectImageMimeType(buffer);
+                if (!detectedMimeType) {
+                    return NextResponse.json(
+                        { error: `File content does not match a supported image type for ${file.name}` },
+                        { status: 415 }
+                    );
+                }
+
                 results.push({
                     type: 'image',
-                    content: `data:${mimeType};base64,${buffer.toString('base64')}`,
+                    content: `data:${detectedMimeType};base64,${buffer.toString('base64')}`,
                     name: file.name,
                 });
                 continue;
