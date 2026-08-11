@@ -35,6 +35,30 @@ type OpenAIResponsesTool =
 
 type OpenAIReasoningSummaryMode = 'auto' | 'concise' | 'detailed';
 type OpenAITextVerbosity = 'low' | 'medium' | 'high';
+export type OpenAIReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+export type OpenAIReasoningMode = 'standard' | 'pro';
+
+interface OpenAIModelPresetOverride {
+    model: string;
+    reasoningMode: OpenAIReasoningMode;
+}
+
+// Frontend IDs encode the execution mode while the API always receives the
+// underlying GPT 5.6 Sol model. Keep the retired Max ID defensive so callers
+// that bypass the model alias layer still receive the user's chosen Pro tier.
+const OPENAI_MODEL_PRESET_OVERRIDES: Record<string, OpenAIModelPresetOverride> = {
+    'gpt-5.6-sol-pro': { model: 'gpt-5.6-sol', reasoningMode: 'pro' },
+    'gpt-5.6-sol-max': { model: 'gpt-5.6-sol', reasoningMode: 'pro' },
+};
+
+export function resolveOpenAIModel(modelId: string): string {
+    const normalizedId = modelId.trim();
+    return OPENAI_MODEL_PRESET_OVERRIDES[normalizedId]?.model || normalizedId;
+}
+
+export function resolveOpenAIReasoningMode(modelId: string): OpenAIReasoningMode {
+    return OPENAI_MODEL_PRESET_OVERRIDES[modelId.trim()]?.reasoningMode || 'standard';
+}
 
 const WEB_SEARCH_CONTEXT_SIZES: readonly WebSearchContextSize[] = ['low', 'medium', 'high'];
 
@@ -75,7 +99,7 @@ function shouldEnableCodeInterpreter(requestedModel: string): boolean {
     const codeInterpreterEnabled = parseBooleanEnv('OPENAI_ENABLE_CODE_INTERPRETER', false);
     if (!codeInterpreterEnabled) return false;
 
-    return requestedModel.toLowerCase() === 'gpt-5.5';
+    return resolveOpenAIModel(requestedModel).toLowerCase() === 'gpt-5.6-sol';
 }
 
 function buildOpenAITools(
@@ -118,18 +142,27 @@ function resolveResponsesOutputControls(): {
     return { summary: 'auto', verbosity: 'medium' };
 }
 
-function buildResponsesRequestBody(
+export function buildOpenAIResponsesRequestBody(
     model: string,
-    effort: 'low' | 'medium' | 'high',
+    effort: OpenAIReasoningEffort,
     input: unknown,
-    tools: OpenAIResponsesTool[]
+    tools: OpenAIResponsesTool[],
+    reasoningMode: OpenAIReasoningMode = 'standard'
 ): Record<string, unknown> {
     const controls = resolveResponsesOutputControls();
+    const reasoning: Record<string, unknown> = {
+        effort,
+        summary: controls.summary,
+    };
+
+    if (reasoningMode === 'pro') {
+        reasoning.mode = 'pro';
+    }
 
     const body: Record<string, unknown> = {
         model,
         stream: true,
-        reasoning: { effort: effort, summary: controls.summary },
+        reasoning,
         text: { verbosity: controls.verbosity },
         input,
     };
@@ -177,9 +210,11 @@ function extractReasoningSummaryText(summary: unknown): string {
 
 export async function* streamOpenAIResponse(
     messages: OpenAIMessage[],
-    model: string,
-    effort: 'low' | 'medium' | 'high' = 'high'
+    requestedModel: string,
+    effort: OpenAIReasoningEffort = 'high'
 ): AsyncGenerator<OpenAIStreamEvent> {
+    const model = resolveOpenAIModel(requestedModel);
+    const reasoningMode = resolveOpenAIReasoningMode(requestedModel);
     // Check if we need to use the custom GPT-5 format
     const useResponsesApi = model.includes('5.') || model.startsWith('gpt-5');
     if (useResponsesApi) {
@@ -234,7 +269,7 @@ export async function* streamOpenAIResponse(
 
         const initialTools = buildOpenAITools(model);
         let response = await requestResponsesStream(
-            buildResponsesRequestBody(model, effort, input, initialTools)
+            buildOpenAIResponsesRequestBody(model, effort, input, initialTools, reasoningMode)
         );
 
         if (!response.ok) {
@@ -249,7 +284,7 @@ export async function* streamOpenAIResponse(
 
             if (shouldRetryWebOnly) {
                 response = await requestResponsesStream(
-                    buildResponsesRequestBody(model, effort, input, webOnlyTools)
+                    buildOpenAIResponsesRequestBody(model, effort, input, webOnlyTools, reasoningMode)
                 );
 
                 if (!response.ok) {
@@ -382,9 +417,10 @@ export async function* streamOpenAIResponse(
             stream: true,
         };
 
-        // Add reasoning effort only for o-series models (o1, o3, etc) which support it
+        // Add reasoning effort only for o-series models (o1, o3, etc) which support it.
+        // They predate the xhigh/max levels, so clamp anything above high.
         if (model.startsWith('o1') || model.startsWith('o3')) {
-            requestOptions.reasoning_effort = effort;
+            requestOptions.reasoning_effort = (effort === 'xhigh' || effort === 'max') ? 'high' : effort;
         }
 
         const stream = await openai.chat.completions.create(requestOptions);

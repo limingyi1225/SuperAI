@@ -15,7 +15,7 @@ Next.js 16 App Router + TypeScript. Multi-model AI tutor that streams responses 
 ```
 app/api/ask/route.ts       — SSE streaming endpoint (parallel multi-model)
 app/api/upload/route.ts    — file upload (images→base64, PDFs→text)
-app/api/generate-title/    — title generation (gpt-5-nano)
+app/api/generate-title/    — title generation (gpt-5.6-luna)
 app/page.tsx               — main UI (client component)
 components/                — React client components (*.tsx + *.module.css)
 context/SessionContext.tsx  — session state + localStorage persistence
@@ -43,7 +43,7 @@ middleware.ts              — Basic HTTP Auth (all routes)
 
 API keys: `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `ANTHROPIC_API_KEY`, `XAI_API_KEY`.
 
-Model overrides: `GEMINI_MODEL`, `CLAUDE_MODEL_OPUS`, `CLAUDE_MODEL_SONNET`. OpenAI hardcoded to `gpt-5.5` / `gpt-5.5-pro`. Grok hardcoded to `grok-4.3-latest`.
+Model overrides: `GEMINI_MODEL`, `CLAUDE_MODEL_OPUS`, `CLAUDE_MODEL_FABLE`, `OPENAI_MODEL_TITLE`. OpenAI hardcoded to `gpt-5.6-sol` (frontend presets `gpt-5.6-sol` = standard+xhigh, `gpt-5.6-sol-pro` = pro+xhigh). Grok hardcoded to `grok-4.5`.
 
 Auth: `AUTH_ENABLED=true`, `AUTH_USERS=user:pass`, `AUTH_REALM=IsabbY`. Set `AUTH_ENABLED=false` for local dev.
 

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
             }
         ];
 
-        const titleModel = process.env.OPENAI_MODEL_TITLE || 'gpt-5-nano';
+        const titleModel = process.env.OPENAI_MODEL_TITLE || 'gpt-5.6-luna';
 
         let title = '';
         for await (const event of streamOpenAIResponse(messages, titleModel, 'low')) {

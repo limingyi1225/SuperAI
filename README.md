@@ -48,7 +48,13 @@ These are optional and control tool behavior for the OpenAI Responses API path:
 - `OPENAI_FORCE_DISABLE_TOOLS` (default: `false`)
 - `OPENAI_WEB_SEARCH_TOOL_TYPE` (optional: `web_search` or `web_search_preview`, default: `web_search`)
 
-OpenAI model names are hardcoded — `gpt-5.5` (High tier) and `gpt-5.5-pro` (Pro tier). No env var override.
+The OpenAI model is hardcoded to `gpt-5.6-sol`. No env var override. The frontend exposes
+`gpt-5.6-sol` (standard mode + Extra High effort) and `gpt-5.6-sol-pro` (Pro mode +
+Extra High effort). The `-pro` suffix is local UI metadata and is stripped before the
+request is sent; Pro mode is enabled with `reasoning.mode: "pro"`.
+
+The session-title generator uses a separate, cheaper model: `OPENAI_MODEL_TITLE`
+(default `gpt-5.6-luna`).
 
 ## xAI Environment Variables
 
@@ -56,8 +62,10 @@ OpenAI model names are hardcoded — `gpt-5.5` (High tier) and `gpt-5.5-pro` (Pr
 
 ### Grok Notes
 
-- Grok is hardcoded to `grok-4.3-latest`. No env var override.
-- `grok-4.3-latest` reasons automatically — `reasoning_effort` is **not sent** (the API rejects it on this model).
+- Grok is hardcoded to `grok-4.5`. No env var override.
+- `grok-4.5` takes an explicit reasoning effort — the app sends `high` on both paths
+  (`reasoning.effort` on the direct Responses call, `providerOptions.xai.reasoningEffort`
+  through the AI SDK) and streams the reasoning summary it returns.
 - Tools enabled depend on path:
   - Text-only requests go through the AI SDK and get `web_search` + `x_search`.
   - Image / PDF requests go through the direct Responses API path and additionally get `code_execution`.
@@ -67,24 +75,32 @@ OpenAI model names are hardcoded — `gpt-5.5` (High tier) and `gpt-5.5-pro` (Pr
 
 These are optional and control built-in tool behavior for Gemini:
 
+- `GEMINI_MODEL` (default: `gemini-3.6-flash`)
 - `GEMINI_ENABLE_GOOGLE_SEARCH` (default: `true`)
 - `GEMINI_ENABLE_CODE_EXECUTION` (default: `true`)
 - `GEMINI_FORCE_DISABLE_TOOLS` (default: `false`)
+
+Gemini 3.x takes a thinking *level* rather than a token budget — the app sends
+`thinkingConfig.thinkingLevel` (`minimal|low|medium|high`) derived from the model's effort.
 
 ## Claude Environment Variables
 
 These are optional unless you use Claude models:
 
 - `ANTHROPIC_API_KEY` (required for Claude)
-- `CLAUDE_MODEL_OPUS` (default: `claude-opus-4-7`)
-- `CLAUDE_MODEL` (fallback model if `CLAUDE_MODEL_OPUS` is unset)
-- `CLAUDE_MAX_TOKENS` (default: `16384`)
+- `CLAUDE_MODEL_OPUS` (default: `claude-opus-5`)
+- `CLAUDE_MODEL_FABLE` (default: `claude-fable-5`)
+- `CLAUDE_MODEL` (fallback model if the per-model var above is unset)
+- `CLAUDE_MAX_TOKENS` (default: `64000`, hard cap `128000` on Opus 5 / Fable 5 — covers thinking **plus** the answer)
 - `CLAUDE_ENABLE_THINKING` (default: `true`, uses `thinking: { type: "adaptive" }`)
-- `CLAUDE_OUTPUT_EFFORT` (optional override: `low|medium|high|max`; no implicit remapping)
+- `CLAUDE_OUTPUT_EFFORT` (optional override: `low|medium|high|xhigh|max`; no implicit remapping. Both Claude presets run at `xhigh` by default)
 - `CLAUDE_TOOL_PAUSE_TURN_MAX` (default: `5`)
 - `CLAUDE_WEB_SEARCH_MAX_USES` (default: `3`)
 - `ANTHROPIC_BETAS` (optional comma-separated beta headers)
 - `ANTHROPIC_VERSION` (default: `2023-06-01`)
+
+Responses that stop at `max_tokens` or `model_context_window_exceeded` are surfaced as
+truncation errors instead of being marked complete.
 
 ### Claude Tools Notes
 

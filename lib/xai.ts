@@ -98,6 +98,9 @@ type XAIDirectRunner = (
 
 const DEFAULT_XAI_PDF_FILENAME = 'document.pdf';
 const XAI_API_BASE_URL = 'https://api.x.ai/v1';
+// Grok 4.5 accepts an explicit reasoning effort (4.3 did not) and exposes a
+// reasoning summary, which the stream handlers below already surface.
+const XAI_REASONING_EFFORT = 'high';
 
 function getRequiredXAIAPIKey(): string {
     const apiKey = process.env.XAI_API_KEY?.trim();
@@ -455,6 +458,7 @@ async function* defaultDirectRunner(request: XAIDirectRequest): AsyncGenerator<X
         const body = {
             model: request.model,
             stream: true,
+            reasoning: { effort: XAI_REASONING_EFFORT },
             tools: [{ type: 'web_search' }, { type: 'x_search' }, { type: 'code_execution' }],
             tool_choice: 'auto',
             input,
@@ -574,6 +578,7 @@ const defaultStreamRunner: XAIStreamRunner = (request) => {
         system: request.system,
         messages: request.messages,
         tools: request.tools,
+        providerOptions: { xai: { reasoningEffort: XAI_REASONING_EFFORT } },
     });
 };
 

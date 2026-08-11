@@ -66,7 +66,7 @@ test('streamXAIResponse throws when XAI_API_KEY is missing', async () => {
             async () => {
                 for await (const event of streamXAIResponse(
                     [{ role: 'user', content: 'Hello' }],
-                    'grok-4.3-latest'
+                    'grok-4.5'
                 )) {
                     throw new Error(`Unexpected stream event: ${JSON.stringify(event)}`);
                 }
@@ -99,7 +99,7 @@ test('streamXAIResponse yields answer deltas without reasoning summary events', 
 
         for await (const event of streamXAIResponse(
             [{ role: 'user', content: 'Hello' }],
-            'grok-4.3-latest',
+            'grok-4.5',
             undefined,
             fakeRunner,
             {
@@ -149,7 +149,7 @@ test('streamXAIResponse forwards text reasoning summary events from fullStream',
 
         for await (const event of streamXAIResponse(
             [{ role: 'user', content: 'Analyze this problem carefully' }],
-            'grok-4.3-latest',
+            'grok-4.5',
             undefined,
             fakeRunner,
             {
@@ -212,7 +212,7 @@ test('streamXAIResponse uses direct xAI responses flow for pdf attachments', asy
                     pdfs: ['pdf-base64'],
                 }),
             }],
-            'grok-4.3-latest',
+            'grok-4.5',
             'system prompt',
             fakeRunner,
             undefined,
@@ -235,7 +235,7 @@ test('streamXAIResponse uses direct xAI responses flow for pdf attachments', asy
                     },
                 ],
             }],
-            model: 'grok-4.3-latest',
+            model: 'grok-4.5',
             systemInstruction: 'system prompt',
         });
         assert.deepEqual(events, [

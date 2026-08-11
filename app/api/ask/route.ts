@@ -208,7 +208,8 @@ export async function POST(request: NextRequest) {
                             : '请识别图片/文档中的题目并用中文作答。先给出最终答案，再给出详细步骤。除化学术语外请使用中文。');
 
                     if (modelConfig.provider === 'openai') {
-                        const openAIEffort = modelConfig.effort === 'max' ? 'high' : modelConfig.effort;
+                        // The Responses API accepts the full ladder up to xhigh/max, so pass it through.
+                        const openAIEffort = modelConfig.effort;
                         const content: OpenAIContentPart[] = [];
 
                         for (const pdf of pdfs) {
@@ -262,7 +263,9 @@ export async function POST(request: NextRequest) {
 
                         await pipeProviderEvents(writer, modelId, streamOpenAIResponse(messages, canonicalId, openAIEffort));
                     } else if (modelConfig.provider === 'gemini') {
-                        const geminiEffort = modelConfig.effort === 'max' ? 'high' : modelConfig.effort;
+                        const geminiEffort = (modelConfig.effort === 'max' || modelConfig.effort === 'xhigh')
+                            ? 'high'
+                            : modelConfig.effort;
                         const questionPrefix = language === 'English' ? 'Question:' : '用户题目：';
                         const currentTurnParts: GeminiContentPart[] = [];
 

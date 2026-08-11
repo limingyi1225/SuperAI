@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
 const genAI = new GoogleGenAI({
     apiKey: process.env.GOOGLE_AI_API_KEY || '',
@@ -47,6 +47,12 @@ interface GeminiResponseChunk {
         };
     }>;
 }
+
+const THINKING_LEVEL_BY_EFFORT: Record<'low' | 'medium' | 'high', ThinkingLevel> = {
+    low: ThinkingLevel.LOW,
+    medium: ThinkingLevel.MEDIUM,
+    high: ThinkingLevel.HIGH,
+};
 
 function getDeltaAndNextText(incoming: string, previous: string): { delta: string; next: string } {
     if (!incoming) return { delta: '', next: previous };
@@ -144,7 +150,7 @@ export async function* streamGeminiResponse(
     effort: 'low' | 'medium' | 'high' = 'high',
     systemInstruction?: string
 ): AsyncGenerator<GeminiStreamEvent> {
-    const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+    const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
     let emittedAnySummary = false;
     let previousAnswerText = '';
     let previousThoughtText = '';
@@ -164,7 +170,7 @@ export async function* streamGeminiResponse(
                 systemInstruction?: string;
                 thinkingConfig?: {
                     includeThoughts?: boolean;
-                    thinkingBudget?: number;
+                    thinkingLevel?: ThinkingLevel;
                 };
                 tools?: GeminiTool[];
             };
@@ -187,9 +193,8 @@ export async function* streamGeminiResponse(
             generateConfig.config.tools = tools;
         }
 
-        // Apply thinking budget to all models that support thoughts.
-        // Without a cap, models like gemini-3.1-pro-preview can think for 90s+, causing ResponseAborted.
-        generateConfig.config.thinkingConfig.thinkingBudget = effort === 'high' ? 8192 : effort === 'medium' ? 4096 : 1024;
+        // Gemini 3.x takes a thinking level rather than a raw token budget.
+        generateConfig.config.thinkingConfig.thinkingLevel = THINKING_LEVEL_BY_EFFORT[effort];
 
         try {
             const response = await genAI.models.generateContentStream(generateConfig);

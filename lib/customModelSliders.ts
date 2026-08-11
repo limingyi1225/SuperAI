@@ -18,35 +18,35 @@ export const PROVIDER_MODEL_SLIDERS: Record<ProviderId, ProviderSliderConfig> = 
     openai: {
         provider: 'openai',
         vendorLabel: 'GPT',
-        defaultModelId: 'gpt-5.5',
+        defaultModelId: 'gpt-5.6-sol',
         steps: [
-            { modelId: 'gpt-5.5', label: 'High' },
-            { modelId: 'gpt-5.5-pro', label: 'Pro' },
+            { modelId: 'gpt-5.6-sol', label: 'Extra High' },
+            { modelId: 'gpt-5.6-sol-pro', label: 'Pro' },
         ],
     },
     gemini: {
         provider: 'gemini',
         vendorLabel: 'Gemini',
-        defaultModelId: 'gemini-3.5-flash',
+        defaultModelId: 'gemini-3.6-flash',
         steps: [
-            { modelId: 'gemini-3.5-flash', label: 'High' },
+            { modelId: 'gemini-3.6-flash', label: 'High' },
         ],
     },
     claude: {
         provider: 'claude',
         vendorLabel: 'Claude',
-        defaultModelId: 'claude-sonnet-4-6',
+        defaultModelId: 'claude-opus-5',
         steps: [
-            { modelId: 'claude-sonnet-4-6', label: 'Sonnet' },
-            { modelId: 'claude-opus-4-7', label: 'Opus' },
+            { modelId: 'claude-opus-5', label: 'Opus' },
+            { modelId: 'claude-fable-5', label: 'Fable' },
         ],
     },
     xai: {
         provider: 'xai',
         vendorLabel: 'Grok',
-        defaultModelId: 'grok-4.3-latest',
+        defaultModelId: 'grok-4.5',
         steps: [
-            { modelId: 'grok-4.3-latest', label: 'Latest' },
+            { modelId: 'grok-4.5', label: 'High' },
         ],
     },
 };

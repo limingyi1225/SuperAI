@@ -33,37 +33,62 @@ export interface ClaudeStreamEvent {
 
 const DEFAULT_WEB_SEARCH_MAX_USES = 3;
 const DEFAULT_PAUSE_TURN_MAX = 5;
+const DEFAULT_CLAUDE_MAX_TOKENS = 64000;
+const CLAUDE_MAX_TOKENS_HARD_CAP = 128000;
 
-function parsePositiveIntEnv(name: string, defaultValue: number): number {
+function parsePositiveIntEnv(name: string, defaultValue: number, maxValue = Number.MAX_SAFE_INTEGER): number {
     const raw = process.env[name];
     if (!raw) return defaultValue;
     const parsed = Number.parseInt(raw, 10);
     if (!Number.isFinite(parsed) || parsed <= 0) return defaultValue;
-    return parsed;
+    return Math.min(parsed, maxValue);
 }
 
-function resolveClaudeModel(model: string): string {
-    if (
-        model === 'claude-opus-4-7' ||
-        model === 'claude-opus-4-7-high' ||
-        model === 'claude-opus-4-7-low' ||
-        // Backward compat for any stale saved session IDs (alias layer in models.ts
-        // normally normalizes these, but we accept them here defensively).
-        model === 'claude-opus-4-6' ||
-        model === 'claude-opus-4-6-high' ||
-        model === 'claude-opus-4-6-low'
-    ) {
-        return process.env.CLAUDE_MODEL_OPUS || process.env.CLAUDE_MODEL || 'claude-opus-4-7';
+export function resolveClaudeMaxTokens(): number {
+    return parsePositiveIntEnv(
+        'CLAUDE_MAX_TOKENS',
+        DEFAULT_CLAUDE_MAX_TOKENS,
+        CLAUDE_MAX_TOKENS_HARD_CAP,
+    );
+}
+
+export function getClaudeStopReasonFailure(
+    stopReason: string | null,
+    maxTokens: number,
+): string | null {
+    if (stopReason === 'end_turn') return null;
+
+    if (stopReason === 'max_tokens') {
+        return `Claude response was truncated after reaching CLAUDE_MAX_TOKENS=${maxTokens}`;
     }
-    if (model === 'claude-sonnet-4-6') {
-        return process.env.CLAUDE_MODEL_SONNET || process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
+    if (stopReason === 'model_context_window_exceeded') {
+        return 'Claude response was truncated after reaching the model context window';
+    }
+    if (stopReason === 'refusal') {
+        return 'Claude refused to complete this response';
+    }
+    if (stopReason === null) {
+        return 'Claude stream ended without a stop reason';
+    }
+
+    return `Claude stopped before completing the response (${stopReason})`;
+}
+
+// Callers pass the canonical model ID (api/ask/route.ts normalizes through
+// MODEL_ID_ALIASES first), so only the current IDs need handling here.
+function resolveClaudeModel(model: string): string {
+    if (model === 'claude-opus-5') {
+        return process.env.CLAUDE_MODEL_OPUS || process.env.CLAUDE_MODEL || 'claude-opus-5';
+    }
+    if (model === 'claude-fable-5') {
+        return process.env.CLAUDE_MODEL_FABLE || process.env.CLAUDE_MODEL || 'claude-fable-5';
     }
     return model;
 }
 
-type ClaudeOutputEffort = 'low' | 'medium' | 'high' | 'max';
+type ClaudeOutputEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
-const CLAUDE_OUTPUT_EFFORT_VALUES: readonly ClaudeOutputEffort[] = ['low', 'medium', 'high', 'max'];
+const CLAUDE_OUTPUT_EFFORT_VALUES: readonly ClaudeOutputEffort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 function resolveClaudeOutputEffort(effort: ClaudeOutputEffort): ClaudeOutputEffort {
     const overrideRaw = process.env.CLAUDE_OUTPUT_EFFORT?.trim().toLowerCase();
@@ -152,12 +177,13 @@ function normalizeMessages(messages: ClaudeMessage[]): Anthropic.Messages.Messag
 export async function* streamClaudeResponse(
     messages: ClaudeMessage[],
     model: string,
-    effort: 'low' | 'medium' | 'high' | 'max' = 'high',
+    effort: ClaudeOutputEffort = 'high',
     systemInstruction?: string
 ): AsyncGenerator<ClaudeStreamEvent> {
     const client = createClient();
     const modelName = resolveClaudeModel(model);
     const pauseTurnMax = parsePositiveIntEnv('CLAUDE_TOOL_PAUSE_TURN_MAX', DEFAULT_PAUSE_TURN_MAX);
+    const maxTokens = resolveClaudeMaxTokens();
     const tools = buildTools();
     const resolvedEffort = resolveClaudeOutputEffort(effort);
 
@@ -170,12 +196,21 @@ export async function* streamClaudeResponse(
     while (true) {
         const params: Anthropic.Messages.MessageCreateParamsStreaming = {
             model: modelName,
-            max_tokens: parsePositiveIntEnv('CLAUDE_MAX_TOKENS', 16384),
+            // Opus 5 / Fable 5 both accept up to 128000. This budget covers thinking
+            // *plus* the answer, and xhigh effort spends a lot of it thinking, so keep
+            // plenty of headroom — it's a ceiling, not a target, and billing is on
+            // tokens actually generated.
+            max_tokens: maxTokens,
             stream: true,
             messages: conversationMessages,
-            thinking: { type: 'adaptive' },
+            // Opus 5 / Fable 5 default `display` to "omitted", which streams zero
+            // thinking deltas and leaves the reasoning panel blank. Ask for summaries.
+            thinking: { type: 'adaptive', display: 'summarized' } as Anthropic.Messages.ThinkingConfigParam,
             output_config: {
-                effort: resolvedEffort,
+                // The pinned SDK (0.78.0) predates the `xhigh` effort level, so its
+                // union type rejects it even though the API accepts it. The value is
+                // validated against CLAUDE_OUTPUT_EFFORT_VALUES above.
+                effort: resolvedEffort as 'low' | 'medium' | 'high' | 'max',
             },
             tools: tools as unknown as Anthropic.Messages.Tool[],
         };
@@ -259,7 +294,12 @@ export async function* streamClaudeResponse(
             continue;
         }
 
-        // Normal completion
+        const stopReasonFailure = getClaudeStopReasonFailure(stopReason, maxTokens);
+        if (stopReasonFailure) {
+            throw new Error(stopReasonFailure);
+        }
+
+        // Natural completion
         if (summarySeen && !summaryDoneEmitted) {
             summaryDoneEmitted = true;
             yield { type: 'reasoning_summary_done' };

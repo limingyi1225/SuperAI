@@ -19,7 +19,7 @@ Next.js 16 App Router + TypeScript. Multi-model AI homework tutor — users subm
 app/
   api/ask/route.ts         # Main SSE streaming endpoint (multi-model parallel)
   api/upload/route.ts      # File handler (images→base64, PDFs→text via pdf-parse)
-  api/generate-title/      # Uses gpt-5-nano for fast title generation
+  api/generate-title/      # Uses gpt-5.6-luna for fast title generation
   page.tsx                 # Main UI (client component)
 components/                # All client components
 context/SessionContext.tsx # Session state + localStorage persistence (debounced 800ms)
@@ -41,7 +41,7 @@ tests/                     # *.test.mjs using Node built-in test runner
 
 **SSE Streaming**: `/api/ask` uses `TransformStream` to stream per-model responses in parallel. Event types: `start`, `chunk`, `reasoning_summary_*`, `done`, `error`, `complete`.
 
-**Model IDs**: OpenAI hardcoded to `gpt-5.5` / `gpt-5.5-pro`. Grok hardcoded to `grok-4.3-latest` (no `reasoning_effort` — 4.3 reasons automatically). Claude via `CLAUDE_MODEL_OPUS/SONNET`. Gemini via `GEMINI_MODEL`.
+**Model IDs**: OpenAI hardcoded to `gpt-5.6-sol`; the frontend IDs `gpt-5.6-sol` (standard+xhigh) and `gpt-5.6-sol-pro` (pro+xhigh) encode the execution preset, and `resolveOpenAIModel()` strips the suffix before the API call. Grok hardcoded to `grok-4.5` (sends `reasoning.effort: 'high'`). Claude via `CLAUDE_MODEL_OPUS` / `CLAUDE_MODEL_FABLE`. Gemini via `GEMINI_MODEL`. `MODEL_ID_ALIASES` in `lib/models.ts` maps retired IDs from persisted sessions forward.
 
 **Tool fallback chains**: OpenAI and Gemini try full tools → search only → no tools. Set `OPENAI_FORCE_DISABLE_TOOLS=true` or `GEMINI_FORCE_DISABLE_TOOLS=true` to skip tools entirely. Claude always sends web search + code execution tools (no fallback).
 
@@ -49,7 +49,7 @@ tests/                     # *.test.mjs using Node built-in test runner
 - OpenAI: `response.reasoning_summary_*` events
 - Gemini: `part.thought === true` in content parts
 - Claude: `thinking` content blocks
-- Grok: no reasoning summary exposure in this beta; only answer deltas stream
+- Grok: `reasoning-delta` events on the AI SDK `fullStream` (grok-4.5 exposes a summary; 4.3 did not)
 
 **LaTeX preprocessing** (`lib/hookUtils.ts`): `\[...\]`→`$$...$$`, `\(...\)`→`$...$`. Applied before react-markdown. Code blocks are preserved first.
 
@@ -67,10 +67,10 @@ ANTHROPIC_API_KEY=
 XAI_API_KEY=
 
 # Model overrides (main OpenAI/Grok models are hardcoded — only the title generator is overridable)
-OPENAI_MODEL_TITLE=                      # Override title-generator model (default gpt-5-nano)
-GEMINI_MODEL=gemini-3.1-pro-preview  # frontend model ID is gemini-3.1-pro; fallback default is gemini-2.0-flash
-CLAUDE_MODEL_OPUS=claude-opus-4-7
-CLAUDE_MODEL_SONNET=claude-sonnet-4-6
+OPENAI_MODEL_TITLE=                      # Override title-generator model (default gpt-5.6-luna)
+GEMINI_MODEL=gemini-3.6-flash            # fallback default is also gemini-3.6-flash
+CLAUDE_MODEL_OPUS=claude-opus-5
+CLAUDE_MODEL_FABLE=claude-fable-5
 
 # Tool toggles (default: web search on, code execution varies)
 OPENAI_ENABLE_WEB_SEARCH=true
@@ -83,7 +83,7 @@ GEMINI_ENABLE_CODE_EXECUTION=true
 GEMINI_FORCE_DISABLE_TOOLS=false
 CLAUDE_ENABLE_THINKING=true
 CLAUDE_WEB_SEARCH_MAX_USES=3
-CLAUDE_OUTPUT_EFFORT=                    # Override effort level for Claude
+CLAUDE_OUTPUT_EFFORT=                    # Override effort level for Claude (low|medium|high|xhigh|max; both presets default to xhigh)
 CLAUDE_TOOL_PAUSE_TURN_MAX=5             # Auto-resume cap for Claude pause_turn
 
 # Auth (Basic HTTP Auth via middleware.ts)
