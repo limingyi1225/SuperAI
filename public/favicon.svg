@@ -1,12 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2997ff"/>
-      <stop offset="1" stop-color="#a06bff"/>
+    <linearGradient id="powder-blue-tile" x1="12" y1="8" x2="52" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DBEEFF"/>
+      <stop offset="1" stop-color="#B7D6F4"/>
+    </linearGradient>
+    <linearGradient id="powder-blue-sheen" x1="14" y1="11" x2="34" y2="29" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F9FDFF" stop-opacity=".9"/>
+      <stop offset=".78" stop-color="#F9FDFF" stop-opacity="0"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="14" fill="url(#g)"/>
-  <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central"
-        font-family="-apple-system,BlinkMacSystemFont,'SF Pro Display',Inter,system-ui,sans-serif"
-        font-size="34" font-weight="700" fill="#ffffff">i</text>
+  <rect id="tile-base" x="4" y="4" width="56" height="56" rx="15" fill="url(#powder-blue-tile)"/>
+  <rect x="4.75" y="4.75" width="54.5" height="54.5" rx="14.25" stroke="#A9D1F2" stroke-opacity=".95" stroke-width="1.5"/>
+  <path d="M12.2 13.2C16.1 11.6 20.7 11 26 11.4C22.6 12 18.8 13.7 15.7 16.2C13.7 17.8 12.2 19.5 11.2 21.3V15.6C11.3 14.7 11.7 13.9 12.2 13.2Z" fill="url(#powder-blue-sheen)"/>
+  <g id="ia-monogram" fill="#153E7B">
+    <path d="M15.2 16.6H22.8V47.2H15.2V16.6Z"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M24.6 47.2L35.5 16.6H43.8L53.8 47.2H47L45.3 41.3H35.2L33.2 47.2H24.6ZM37.1 35.9H43.4L40.2 25.4L37.1 35.9Z"/>
+  </g>
 </svg>
