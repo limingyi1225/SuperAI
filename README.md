@@ -62,8 +62,8 @@ The session-title generator uses a separate, cheaper model: `OPENAI_MODEL_TITLE`
 
 ### Grok Notes
 
-- Grok is hardcoded to `grok-4.5`. No env var override.
-- `grok-4.5` takes an explicit reasoning effort — the app sends `high` on both paths
+- Grok is hardcoded to `grok-4.6`. No env var override.
+- `grok-4.6` takes an explicit reasoning effort — the app sends `high` on both paths
   (`reasoning.effort` on the direct Responses call, `providerOptions.xai.reasoningEffort`
   through the AI SDK) and streams the reasoning summary it returns.
 - Tools enabled depend on path:

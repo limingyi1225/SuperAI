@@ -38,13 +38,13 @@ test('resolveRequestedModels deduplicates aliased requests but preserves first r
     ]);
 });
 
-test('AVAILABLE_MODELS includes grok-4.5', () => {
+test('AVAILABLE_MODELS includes grok-4.6', () => {
     const modelIds = AVAILABLE_MODELS.map(model => model.id);
-    assert.ok(modelIds.includes('grok-4.5'));
+    assert.ok(modelIds.includes('grok-4.6'));
 });
 
-test('REASONING_TIERS.deep includes grok-4.5', () => {
-    assert.ok(REASONING_TIERS.deep.includes('grok-4.5'));
+test('REASONING_TIERS.deep includes grok-4.6', () => {
+    assert.ok(REASONING_TIERS.deep.includes('grok-4.6'));
 });
 
 test('normalizeModelId maps the legacy Claude Opus 4.x ids to Opus 5', () => {
@@ -60,7 +60,8 @@ test('normalizeModelId maps legacy OpenAI, Gemini and Grok ids forward', () => {
     assert.equal(normalizeModelId('gpt-5.5-pro'), 'gpt-5.6-sol-pro');
     assert.equal(normalizeModelId('gpt-5.6-sol-max'), 'gpt-5.6-sol-pro');
     assert.equal(normalizeModelId('gemini-3.5-flash'), 'gemini-3.6-flash');
-    assert.equal(normalizeModelId('grok-4.3-latest'), 'grok-4.5');
+    assert.equal(normalizeModelId('grok-4.3-latest'), 'grok-4.6');
+    assert.equal(normalizeModelId('grok-4.5'), 'grok-4.6');
 });
 
 test('normalizeModelId passes through ids that were never shipped', () => {

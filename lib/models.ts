@@ -31,8 +31,9 @@ const MODEL_ID_ALIASES: Record<string, string> = {
     'claude-opus-4-6': 'claude-opus-5',
     'claude-opus-4-6-high': 'claude-opus-5',
     'claude-opus-4-6-low': 'claude-opus-5',
-    // xAI
-    'grok-4.3-latest': 'grok-4.5',
+    // xAI: the 4.3/4.5 selections migrate to Grok 4.6.
+    'grok-4.3-latest': 'grok-4.6',
+    'grok-4.5': 'grok-4.6',
 };
 
 export const AVAILABLE_MODELS: ModelConfig[] = [
@@ -72,18 +73,18 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
         description: 'Anthropic Claude Fable 5 with extra high effort',
     },
     {
-        id: 'grok-4.5',
-        name: 'Grok 4.5 (High)',
+        id: 'grok-4.6',
+        name: 'Grok 4.6 (High)',
         provider: 'xai',
         effort: 'high',
-        description: 'xAI Grok 4.5 with high reasoning effort and web search',
+        description: 'xAI Grok 4.6 with high reasoning effort and web search',
     },
 ];
 
 export type TierId = 'deep' | 'custom';
 
 export const REASONING_TIERS: { deep: string[] } = {
-    deep: ['gemini-3.6-flash', 'gpt-5.6-sol', 'claude-opus-5', 'grok-4.5'],
+    deep: ['gemini-3.6-flash', 'gpt-5.6-sol', 'claude-opus-5', 'grok-4.6'],
 };
 
 export const TIER_LABELS: Record<TierId, string> = {

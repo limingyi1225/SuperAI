@@ -44,9 +44,9 @@ export const PROVIDER_MODEL_SLIDERS: Record<ProviderId, ProviderSliderConfig> = 
     xai: {
         provider: 'xai',
         vendorLabel: 'Grok',
-        defaultModelId: 'grok-4.5',
+        defaultModelId: 'grok-4.6',
         steps: [
-            { modelId: 'grok-4.5', label: 'High' },
+            { modelId: 'grok-4.6', label: 'High' },
         ],
     },
 };

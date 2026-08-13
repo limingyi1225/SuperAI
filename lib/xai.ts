@@ -98,7 +98,7 @@ type XAIDirectRunner = (
 
 const DEFAULT_XAI_PDF_FILENAME = 'document.pdf';
 const XAI_API_BASE_URL = 'https://api.x.ai/v1';
-// Grok 4.5 accepts an explicit reasoning effort (4.3 did not) and exposes a
+// Grok 4.6 accepts an explicit reasoning effort (4.3 did not) and exposes a
 // reasoning summary, which the stream handlers below already surface.
 const XAI_REASONING_EFFORT = 'high';
 

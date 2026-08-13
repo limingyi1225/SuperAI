@@ -26,7 +26,7 @@ test('sanitizeModelIds normalizes legacy ids from persisted sessions', () => {
     assert.deepEqual(result, [
         'gemini-3.6-flash',
         'claude-opus-5',
-        'grok-4.5',
+        'grok-4.6',
         'gpt-5.6-sol',
         'gpt-5.6-sol-pro',
     ]);
@@ -49,8 +49,8 @@ test('sanitizeModelIds filters non-string entries', () => {
 });
 
 test('sanitizeModelIds keeps grok preset', () => {
-    const result = sanitizeModelIds(['grok-4.5']);
-    assert.deepEqual(result, ['grok-4.5']);
+    const result = sanitizeModelIds(['grok-4.6']);
+    assert.deepEqual(result, ['grok-4.6']);
 });
 
 test('resolveInitialModels returns FALLBACK_MODELS for empty string', () => {
@@ -82,13 +82,13 @@ test('resolveInitialModels filters invalid ids from mixed JSON input', () => {
     assert.ok(!result.includes('not-real'));
 });
 
-test('FALLBACK_MODELS includes grok-4.5', () => {
-    assert.ok(FALLBACK_MODELS.includes('grok-4.5'));
+test('FALLBACK_MODELS includes grok-4.6', () => {
+    assert.ok(FALLBACK_MODELS.includes('grok-4.6'));
 });
 
 test('resolveInitialModels preserves persisted grok custom selections', () => {
-    const json = JSON.stringify(['gpt-5.6-sol', 'grok-4.5']);
+    const json = JSON.stringify(['gpt-5.6-sol', 'grok-4.6']);
     const result = resolveInitialModels(json);
 
-    assert.deepEqual(result, ['gpt-5.6-sol', 'grok-4.5']);
+    assert.deepEqual(result, ['gpt-5.6-sol', 'grok-4.6']);
 });

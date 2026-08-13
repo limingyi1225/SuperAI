@@ -43,7 +43,7 @@ middleware.ts              — Basic HTTP Auth (all routes)
 
 API keys: `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `ANTHROPIC_API_KEY`, `XAI_API_KEY`.
 
-Model overrides: `GEMINI_MODEL`, `CLAUDE_MODEL_OPUS`, `CLAUDE_MODEL_FABLE`, `OPENAI_MODEL_TITLE`. OpenAI hardcoded to `gpt-5.6-sol` (frontend presets `gpt-5.6-sol` = standard+xhigh, `gpt-5.6-sol-pro` = pro+xhigh). Grok hardcoded to `grok-4.5`.
+Model overrides: `GEMINI_MODEL`, `CLAUDE_MODEL_OPUS`, `CLAUDE_MODEL_FABLE`, `OPENAI_MODEL_TITLE`. OpenAI hardcoded to `gpt-5.6-sol` (frontend presets `gpt-5.6-sol` = standard+xhigh, `gpt-5.6-sol-pro` = pro+xhigh). Grok hardcoded to `grok-4.6`.
 
 Auth: `AUTH_ENABLED=true`, `AUTH_USERS=user:pass`, `AUTH_REALM=IsabbY`. Set `AUTH_ENABLED=false` for local dev.
 

@@ -41,7 +41,7 @@ tests/                     # *.test.mjs using Node built-in test runner
 
 **SSE Streaming**: `/api/ask` uses `TransformStream` to stream per-model responses in parallel. Event types: `start`, `chunk`, `reasoning_summary_*`, `done`, `error`, `complete`.
 
-**Model IDs**: OpenAI hardcoded to `gpt-5.6-sol`; the frontend IDs `gpt-5.6-sol` (standard+xhigh) and `gpt-5.6-sol-pro` (pro+xhigh) encode the execution preset, and `resolveOpenAIModel()` strips the suffix before the API call. Grok hardcoded to `grok-4.5` (sends `reasoning.effort: 'high'`). Claude via `CLAUDE_MODEL_OPUS` / `CLAUDE_MODEL_FABLE`. Gemini via `GEMINI_MODEL`. `MODEL_ID_ALIASES` in `lib/models.ts` maps retired IDs from persisted sessions forward.
+**Model IDs**: OpenAI hardcoded to `gpt-5.6-sol`; the frontend IDs `gpt-5.6-sol` (standard+xhigh) and `gpt-5.6-sol-pro` (pro+xhigh) encode the execution preset, and `resolveOpenAIModel()` strips the suffix before the API call. Grok hardcoded to `grok-4.6` (sends `reasoning.effort: 'high'`). Claude via `CLAUDE_MODEL_OPUS` / `CLAUDE_MODEL_FABLE`. Gemini via `GEMINI_MODEL`. `MODEL_ID_ALIASES` in `lib/models.ts` maps retired IDs from persisted sessions forward.
 
 **Tool fallback chains**: OpenAI and Gemini try full tools → search only → no tools. Set `OPENAI_FORCE_DISABLE_TOOLS=true` or `GEMINI_FORCE_DISABLE_TOOLS=true` to skip tools entirely. Claude always sends web search + code execution tools (no fallback).
 
@@ -49,7 +49,7 @@ tests/                     # *.test.mjs using Node built-in test runner
 - OpenAI: `response.reasoning_summary_*` events
 - Gemini: `part.thought === true` in content parts
 - Claude: `thinking` content blocks
-- Grok: `reasoning-delta` events on the AI SDK `fullStream` (grok-4.5 exposes a summary; 4.3 did not)
+- Grok: `reasoning-delta` events on the AI SDK `fullStream` (grok-4.6 exposes a summary; 4.3 did not)
 
 **LaTeX preprocessing** (`lib/hookUtils.ts`): `\[...\]`→`$$...$$`, `\(...\)`→`$...$`. Applied before react-markdown. Code blocks are preserved first.
 

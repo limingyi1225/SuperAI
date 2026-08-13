@@ -15,14 +15,14 @@ test('normalizeProviderModelSelection returns selected providers in stable order
         'gemini-3.6-flash',
         'gpt-5.6-sol-pro',
         'claude-opus-5',
-        'grok-4.5',
+        'grok-4.6',
     ]);
 
     assert.deepEqual(selection, [
         'gpt-5.6-sol',
         'gemini-3.6-flash',
         'claude-opus-5',
-        'grok-4.5',
+        'grok-4.6',
     ]);
 });
 
@@ -111,10 +111,10 @@ test('toggleProviderSelection enables grok with its default preset', () => {
 
 test('setProviderModelSelection setting grok to its only preset is a no-op when already active', () => {
     const next = setProviderModelSelection(
-        ['gpt-5.6-sol', 'grok-4.5'],
+        ['gpt-5.6-sol', 'grok-4.6'],
         'xai',
-        'grok-4.5'
+        'grok-4.6'
     );
 
-    assert.deepEqual(next, ['gpt-5.6-sol', 'grok-4.5']);
+    assert.deepEqual(next, ['gpt-5.6-sol', 'grok-4.6']);
 });
