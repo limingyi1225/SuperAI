@@ -5,6 +5,7 @@ npm run dev      # Dev server on localhost:3000
 npm run build    # Production build
 npm run start    # Production server
 npm run lint     # ESLint
+npm run check:env # Fail if .env.local pins a model id that disagrees with the code defaults
 bash deploy.sh   # rsync + build + PM2 restart on server (nyuclass:/var/www/isabby)
 
 # Run individual tests (no test script configured)
@@ -40,6 +41,8 @@ tests/                     # *.test.mjs using Node built-in test runner
 ## Key Patterns
 
 **SSE Streaming**: `/api/ask` uses `TransformStream` to stream per-model responses in parallel. Event types: `start`, `chunk`, `reasoning_summary_*`, `done`, `error`, `complete`.
+
+**Model env overrides**: every `*_MODEL*` env var is declared once in `lib/modelEnv.ts` alongside its code default; providers call `resolveModelEnv()` rather than reading `process.env` directly. Production keeps its own `.env.local` (excluded from rsync), so `deploy.sh` step 1 pipes the server's copy through `scripts/check-model-env.mjs` and aborts before rsync if any pin disagrees with the code default (`ALLOW_MODEL_ENV_DRIFT=1` to override). Changing a default model means editing `lib/modelEnv.ts` **and** the server's `.env.local`.
 
 **Model IDs**: OpenAI hardcoded to `gpt-5.6-sol`; the frontend IDs `gpt-5.6-sol` (standard+xhigh) and `gpt-5.6-sol-pro` (pro+xhigh) encode the execution preset, and `resolveOpenAIModel()` strips the suffix before the API call. Grok hardcoded to `grok-4.6` (sends `reasoning.effort: 'high'`). Claude via `CLAUDE_MODEL_OPUS` / `CLAUDE_MODEL_FABLE`. Gemini via `GEMINI_MODEL`. `MODEL_ID_ALIASES` in `lib/models.ts` maps retired IDs from persisted sessions forward.
 
@@ -108,4 +111,4 @@ AUTH_REALM=IsabbY
 - `lib/claude.ts` uses `@anthropic-ai/sdk` for Claude API streaming
 - Claude `pause_turn` auto-resumes up to 5 times (`CLAUDE_TOOL_PAUSE_TURN_MAX`, default 5)
 - `next.config.ts` uses `output: 'standalone'` — required for `deploy.sh` PM2 deployment
-- No `npm test` script configured; run test files directly with `node --experimental-strip-types`
+- A model default changed in code does NOT reach production until the server's `.env.local` agrees — `npm run check:env` / deploy step 1 enforces this

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { streamOpenAIResponse } from '@/lib/openai';
+import { resolveModelEnv } from '@/lib/modelEnv';
 
 export const runtime = 'nodejs';
 
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
             }
         ];
 
-        const titleModel = process.env.OPENAI_MODEL_TITLE || 'gpt-5.6-luna';
+        const titleModel = resolveModelEnv('OPENAI_MODEL_TITLE');
 
         let title = '';
         for await (const event of streamOpenAIResponse(messages, titleModel, 'low')) {

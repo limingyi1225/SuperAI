@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "check:env": "node --experimental-strip-types scripts/check-model-env.mjs"
   },
   "dependencies": {
     "@ai-sdk/xai": "^3.0.67",

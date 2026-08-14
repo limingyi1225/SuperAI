@@ -1,4 +1,5 @@
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
+import { resolveModelEnv } from './modelEnv.ts';
 
 const genAI = new GoogleGenAI({
     apiKey: process.env.GOOGLE_AI_API_KEY || '',
@@ -161,7 +162,7 @@ export async function* streamGeminiResponse(
     effort: 'low' | 'medium' | 'high' = 'high',
     systemInstruction?: string
 ): AsyncGenerator<GeminiStreamEvent> {
-    const modelName = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
+    const modelName = resolveModelEnv('GEMINI_MODEL');
     let emittedAnySummary = false;
     let previousAnswerText = '';
     let previousThoughtText = '';

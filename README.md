@@ -75,7 +75,7 @@ The session-title generator uses a separate, cheaper model: `OPENAI_MODEL_TITLE`
 
 These are optional and control built-in tool behavior for Gemini:
 
-- `GEMINI_MODEL` (default: `gemini-3.7-flash`)
+- `GEMINI_MODEL` (default: `gemini-3.7-flash`) — defaults live in `lib/modelEnv.ts`; `npm run check:env` fails if an env file pins something else
 - `GEMINI_ENABLE_GOOGLE_SEARCH` (default: `true`)
 - `GEMINI_ENABLE_CODE_EXECUTION` (default: `true`)
 - `GEMINI_FORCE_DISABLE_TOOLS` (default: `false`)

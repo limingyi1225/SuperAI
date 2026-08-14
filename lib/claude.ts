@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { resolveModelEnv } from './modelEnv.ts';
 
 export interface ClaudeTextContentPart {
     type: 'text';
@@ -78,10 +79,10 @@ export function getClaudeStopReasonFailure(
 // MODEL_ID_ALIASES first), so only the current IDs need handling here.
 function resolveClaudeModel(model: string): string {
     if (model === 'claude-opus-5') {
-        return process.env.CLAUDE_MODEL_OPUS || process.env.CLAUDE_MODEL || 'claude-opus-5';
+        return resolveModelEnv('CLAUDE_MODEL_OPUS');
     }
     if (model === 'claude-fable-5') {
-        return process.env.CLAUDE_MODEL_FABLE || process.env.CLAUDE_MODEL || 'claude-fable-5';
+        return resolveModelEnv('CLAUDE_MODEL_FABLE');
     }
     return model;
 }
