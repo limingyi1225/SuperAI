@@ -3,16 +3,16 @@ import assert from 'node:assert/strict';
 import { sanitizeModelIds, resolveInitialModels, FALLBACK_MODELS } from '../lib/hookUtils.ts';
 
 test('sanitizeModelIds filters out unknown model ids', () => {
-    const result = sanitizeModelIds(['gemini-3.6-flash', 'not-a-real-model', 'gpt-5.6-sol']);
-    assert.ok(result.includes('gemini-3.6-flash'));
+    const result = sanitizeModelIds(['gemini-3.7-flash', 'not-a-real-model', 'gpt-5.6-sol']);
+    assert.ok(result.includes('gemini-3.7-flash'));
     assert.ok(result.includes('gpt-5.6-sol'));
     assert.ok(!result.includes('not-a-real-model'));
 });
 
 test('sanitizeModelIds deduplicates model ids', () => {
-    const result = sanitizeModelIds(['gemini-3.6-flash', 'gemini-3.6-flash']);
+    const result = sanitizeModelIds(['gemini-3.7-flash', 'gemini-3.7-flash']);
     assert.equal(result.length, 1);
-    assert.equal(result[0], 'gemini-3.6-flash');
+    assert.equal(result[0], 'gemini-3.7-flash');
 });
 
 test('sanitizeModelIds normalizes legacy ids from persisted sessions', () => {
@@ -24,7 +24,7 @@ test('sanitizeModelIds normalizes legacy ids from persisted sessions', () => {
         'gpt-5.6-sol-max',
     ]);
     assert.deepEqual(result, [
-        'gemini-3.6-flash',
+        'gemini-3.7-flash',
         'claude-opus-5',
         'grok-4.6',
         'gpt-5.6-sol',
@@ -34,7 +34,7 @@ test('sanitizeModelIds normalizes legacy ids from persisted sessions', () => {
 
 test('sanitizeModelIds returns empty array for non-array input', () => {
     assert.deepEqual(sanitizeModelIds(null), []);
-    assert.deepEqual(sanitizeModelIds('gemini-3.6-flash'), []);
+    assert.deepEqual(sanitizeModelIds('gemini-3.7-flash'), []);
     assert.deepEqual(sanitizeModelIds(42), []);
     assert.deepEqual(sanitizeModelIds(undefined), []);
 });
@@ -44,8 +44,8 @@ test('sanitizeModelIds returns empty array for empty array', () => {
 });
 
 test('sanitizeModelIds filters non-string entries', () => {
-    const result = sanitizeModelIds(['gemini-3.6-flash', 123, null, undefined, 'gpt-5.6-sol']);
-    assert.deepEqual(result.sort(), ['gemini-3.6-flash', 'gpt-5.6-sol'].sort());
+    const result = sanitizeModelIds(['gemini-3.7-flash', 123, null, undefined, 'gpt-5.6-sol']);
+    assert.deepEqual(result.sort(), ['gemini-3.7-flash', 'gpt-5.6-sol'].sort());
 });
 
 test('sanitizeModelIds keeps grok preset', () => {
@@ -69,15 +69,15 @@ test('resolveInitialModels returns FALLBACK_MODELS when all ids are invalid', ()
 });
 
 test('resolveInitialModels returns sanitized models for valid JSON with known ids', () => {
-    const json = JSON.stringify(['gemini-3.6-flash', 'gpt-5.6-sol']);
+    const json = JSON.stringify(['gemini-3.7-flash', 'gpt-5.6-sol']);
     const result = resolveInitialModels(json);
-    assert.deepEqual(result, ['gemini-3.6-flash', 'gpt-5.6-sol']);
+    assert.deepEqual(result, ['gemini-3.7-flash', 'gpt-5.6-sol']);
 });
 
 test('resolveInitialModels filters invalid ids from mixed JSON input', () => {
-    const json = JSON.stringify(['gemini-3.6-flash', 'not-real', 'gpt-5.6-sol']);
+    const json = JSON.stringify(['gemini-3.7-flash', 'not-real', 'gpt-5.6-sol']);
     const result = resolveInitialModels(json);
-    assert.ok(result.includes('gemini-3.6-flash'));
+    assert.ok(result.includes('gemini-3.7-flash'));
     assert.ok(result.includes('gpt-5.6-sol'));
     assert.ok(!result.includes('not-real'));
 });

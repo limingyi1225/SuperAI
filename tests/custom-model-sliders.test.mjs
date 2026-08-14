@@ -12,7 +12,7 @@ import {
 test('normalizeProviderModelSelection returns selected providers in stable order', () => {
     const selection = normalizeProviderModelSelection([
         'gpt-5.6-sol',
-        'gemini-3.6-flash',
+        'gemini-3.7-flash',
         'gpt-5.6-sol-pro',
         'claude-opus-5',
         'grok-4.6',
@@ -20,7 +20,7 @@ test('normalizeProviderModelSelection returns selected providers in stable order
 
     assert.deepEqual(selection, [
         'gpt-5.6-sol',
-        'gemini-3.6-flash',
+        'gemini-3.7-flash',
         'claude-opus-5',
         'grok-4.6',
     ]);
@@ -40,22 +40,22 @@ test('ensureAtLeastOneProviderModelSelection falls back to openai default', () =
 
 test('setProviderModelSelection swaps only the targeted provider', () => {
     const next = setProviderModelSelection(
-        ['gpt-5.6-sol', 'gemini-3.6-flash'],
+        ['gpt-5.6-sol', 'gemini-3.7-flash'],
         'openai',
         'gpt-5.6-sol-pro'
     );
 
-    assert.deepEqual(next, ['gpt-5.6-sol-pro', 'gemini-3.6-flash']);
+    assert.deepEqual(next, ['gpt-5.6-sol-pro', 'gemini-3.7-flash']);
 });
 
 test('setProviderModelSelection ignores invalid model ids', () => {
     const next = setProviderModelSelection(
-        ['gpt-5.6-sol', 'gemini-3.6-flash'],
+        ['gpt-5.6-sol', 'gemini-3.7-flash'],
         'gemini',
         'gpt-5.6-sol-pro'
     );
 
-    assert.deepEqual(next, ['gpt-5.6-sol', 'gemini-3.6-flash']);
+    assert.deepEqual(next, ['gpt-5.6-sol', 'gemini-3.7-flash']);
 });
 
 test('setProviderModelSelection swaps between the two Claude models', () => {
@@ -70,7 +70,7 @@ test('setProviderModelSelection swaps between the two Claude models', () => {
 
 test('toggleProviderSelection can disable providers but keeps at least one', () => {
     const onlyOpenAI = toggleProviderSelection(
-        ['gpt-5.6-sol', 'gemini-3.6-flash'],
+        ['gpt-5.6-sol', 'gemini-3.7-flash'],
         'gemini'
     );
     assert.deepEqual(onlyOpenAI, ['gpt-5.6-sol']);
@@ -89,7 +89,7 @@ test('toggleProviderSelection can disable providers but keeps at least one', () 
 });
 
 test('setProviderModelOrOff supports off option while keeping at least one model', () => {
-    const oneModel = setProviderModelOrOff(['gpt-5.6-sol', 'gemini-3.6-flash'], 'gemini', null);
+    const oneModel = setProviderModelOrOff(['gpt-5.6-sol', 'gemini-3.7-flash'], 'gemini', null);
     assert.deepEqual(oneModel, ['gpt-5.6-sol']);
 
     const stillOne = setProviderModelOrOff(oneModel, 'openai', null);

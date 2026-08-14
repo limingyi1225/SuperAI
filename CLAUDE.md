@@ -68,7 +68,7 @@ XAI_API_KEY=
 
 # Model overrides (main OpenAI/Grok models are hardcoded — only the title generator is overridable)
 OPENAI_MODEL_TITLE=                      # Override title-generator model (default gpt-5.6-luna)
-GEMINI_MODEL=gemini-3.6-flash            # fallback default is also gemini-3.6-flash
+GEMINI_MODEL=gemini-3.7-flash            # fallback default is also gemini-3.7-flash
 CLAUDE_MODEL_OPUS=claude-opus-5
 CLAUDE_MODEL_FABLE=claude-fable-5
 

@@ -22,8 +22,8 @@ test('resolveRequestedModels deduplicates aliased requests but preserves first r
     })), [
         {
             requestedId: 'gemini-3.5-flash',
-            canonicalId: 'gemini-3.6-flash',
-            name: 'Gemini 3.6 Flash (High)',
+            canonicalId: 'gemini-3.7-flash',
+            name: 'Gemini 3.7 Flash (High)',
         },
         {
             requestedId: 'claude-opus-4-6',
@@ -59,7 +59,7 @@ test('normalizeModelId maps legacy OpenAI, Gemini and Grok ids forward', () => {
     assert.equal(normalizeModelId('gpt-5.5'), 'gpt-5.6-sol');
     assert.equal(normalizeModelId('gpt-5.5-pro'), 'gpt-5.6-sol-pro');
     assert.equal(normalizeModelId('gpt-5.6-sol-max'), 'gpt-5.6-sol-pro');
-    assert.equal(normalizeModelId('gemini-3.5-flash'), 'gemini-3.6-flash');
+    assert.equal(normalizeModelId('gemini-3.5-flash'), 'gemini-3.7-flash');
     assert.equal(normalizeModelId('grok-4.3-latest'), 'grok-4.6');
     assert.equal(normalizeModelId('grok-4.5'), 'grok-4.6');
 });

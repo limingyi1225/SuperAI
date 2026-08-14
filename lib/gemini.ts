@@ -101,6 +101,16 @@ function hasCodeExecutionTool(tools: GeminiTool[]): boolean {
     return tools.some(tool => 'codeExecution' in tool);
 }
 
+// Code execution rejects inline data it cannot run on (e.g. application/pdf) and
+// fails the whole request, so only image attachments may be paired with it.
+function inlineDataAllowsCodeExecution(contents: GeminiConversationContent[]): boolean {
+    return contents.every(content => (content.parts || []).every(part => {
+        const mimeType = part.inlineData?.mimeType;
+        if (!mimeType) return true;
+        return mimeType.toLowerCase().startsWith('image/');
+    }));
+}
+
 function areToolSetsEquivalent(a: GeminiTool[], b: GeminiTool[]): boolean {
     const signature = (tools: GeminiTool[]) => (
         tools.map(tool => Object.keys(tool).sort().join(',')).sort().join('|')
@@ -108,9 +118,9 @@ function areToolSetsEquivalent(a: GeminiTool[], b: GeminiTool[]): boolean {
     return signature(a) === signature(b);
 }
 
-function isToolCompatibilityError(error: unknown): boolean {
+export function isToolCompatibilityError(error: unknown): boolean {
     const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-    const hasToolHint = /(tool|tools|google_search|googlesearch|code_execution|codeexecution)/.test(message);
+    const hasToolHint = /(tool|tools|google_search|googlesearch|code_execution|codeexecution|code execution|mime type)/.test(message);
     const hasCompatibilityHint = /(unsupported|not supported|invalid|unknown|unrecognized|not available|not allowed)/.test(message);
     return hasToolHint && hasCompatibilityHint;
 }
@@ -124,8 +134,9 @@ function normalizeToolPartText(part: GeminiResponsePart): string {
     return '';
 }
 
-function buildAttemptToolSets(): GeminiTool[][] {
-    const primaryTools = buildGeminiTools();
+export function buildAttemptToolSets(contents: GeminiConversationContent[]): GeminiTool[][] {
+    const allowCodeExecution = inlineDataAllowsCodeExecution(contents);
+    const primaryTools = buildGeminiTools({ forceSearchOnly: !allowCodeExecution });
     const attemptSets: GeminiTool[][] = [primaryTools];
 
     if (hasCodeExecutionTool(primaryTools)) {
@@ -150,13 +161,13 @@ export async function* streamGeminiResponse(
     effort: 'low' | 'medium' | 'high' = 'high',
     systemInstruction?: string
 ): AsyncGenerator<GeminiStreamEvent> {
-    const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+    const modelName = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
     let emittedAnySummary = false;
     let previousAnswerText = '';
     let previousThoughtText = '';
     let streamCompleted = false;
 
-    const attemptToolSets = buildAttemptToolSets();
+    const attemptToolSets = buildAttemptToolSets(contents);
 
     for (let attemptIndex = 0; attemptIndex < attemptToolSets.length; attemptIndex++) {
         const tools = attemptToolSets[attemptIndex];
