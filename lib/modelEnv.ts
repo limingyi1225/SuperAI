@@ -51,6 +51,8 @@ export interface ModelEnvIssue {
     codeDefault: string;
     kind: ModelEnvIssueKind;
     message: string;
+    /** What to change to clear the issue. */
+    suggestion: string;
 }
 
 /**
@@ -60,28 +62,45 @@ export interface ModelEnvIssue {
  */
 export function checkModelEnvOverrides(env: EnvSource): ModelEnvIssue[] {
     const issues: ModelEnvIssue[] = [];
+    // A legacy key can back several overrides (CLAUDE_MODEL covers both Claude
+    // presets), so collect the defaults it shadows and report the key once.
+    const keyOwners = new Map<string, ModelEnvOverride[]>();
 
     for (const override of MODEL_ENV_OVERRIDES) {
         for (const key of [override.key, override.legacyKey]) {
             if (!key) continue;
-
-            const envValue = env[key]?.trim();
-            if (!envValue || envValue === override.codeDefault) continue;
-
-            const canonical = normalizeModelId(envValue);
-            const retired = canonical !== envValue;
-
-            issues.push({
-                key,
-                label: override.label,
-                envValue,
-                codeDefault: override.codeDefault,
-                kind: retired ? 'retired' : 'drift',
-                message: retired
-                    ? `${key}=${envValue} is a retired id (now ${canonical}); the code default is ${override.codeDefault}`
-                    : `${key}=${envValue} overrides the code default ${override.codeDefault}`,
-            });
+            keyOwners.set(key, [...(keyOwners.get(key) ?? []), override]);
         }
+    }
+
+    for (const [key, owners] of keyOwners) {
+        const envValue = env[key]?.trim();
+        if (!envValue) continue;
+
+        const expected = [...new Set(owners.map(owner => owner.codeDefault))];
+        if (expected.includes(envValue)) continue;
+
+        const canonical = normalizeModelId(envValue);
+        const retired = canonical !== envValue;
+        const expectedText = expected.join(' / ');
+        // Pinning the catch-all key to one id would also force the other presets
+        // onto it, so point at the specific keys instead.
+        const isLegacyKey = owners.some(owner => owner.legacyKey === key);
+        const suggestion = isLegacyKey
+            ? `remove ${key} and set ${owners.map(owner => owner.key).join(' / ')} explicitly, or update the code defaults in lib/modelEnv.ts`
+            : `set ${key}=${expected[0]} there, or update the code default in lib/modelEnv.ts`;
+
+        issues.push({
+            suggestion,
+            key,
+            label: owners.map(owner => owner.label).join(' / '),
+            envValue,
+            codeDefault: expected[0],
+            kind: retired ? 'retired' : 'drift',
+            message: retired
+                ? `${key}=${envValue} is a retired id (now ${canonical}); the code default is ${expectedText}`
+                : `${key}=${envValue} overrides the code default ${expectedText}`,
+        });
     }
 
     return issues;
@@ -101,8 +120,14 @@ export function parseEnvFile(contents: string): Record<string, string> {
         const key = line.slice(0, separator).trim().replace(/^export\s+/, '');
         let value = line.slice(separator + 1).trim();
 
-        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        const quoted = (value.startsWith('"') && value.endsWith('"') && value.length > 1)
+            || (value.startsWith("'") && value.endsWith("'") && value.length > 1);
+
+        if (quoted) {
             value = value.slice(1, -1);
+        } else {
+            // `KEY=value   # note` — an unquoted trailing comment is not part of the value.
+            value = value.replace(/\s+#.*$/, '').trim();
         }
 
         if (key) env[key] = value;

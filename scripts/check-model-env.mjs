@@ -26,6 +26,13 @@ function readSource(source) {
     return readFileSync(source, 'utf8');
 }
 
+// Empty stdin means the env could not be read at all (e.g. the ssh cat found
+// nothing). Reporting that as "ok" would reintroduce exactly the silent pass
+// this check exists to prevent, so it is a hard failure.
+function isUnreadableStdin(source, contents) {
+    return source === '-' && contents.trim() === '';
+}
+
 let issueCount = 0;
 
 for (const source of sources) {
@@ -34,6 +41,12 @@ for (const source of sources) {
 
     if (contents === null) {
         console.log(`  ${name}: not present, code defaults apply — ok`);
+        continue;
+    }
+
+    if (isUnreadableStdin(source, contents)) {
+        issueCount += 1;
+        console.error(`  ✖ ${name}: read back empty — the env could not be verified, refusing to assume it is fine`);
         continue;
     }
 
@@ -47,17 +60,17 @@ for (const source of sources) {
     issueCount += issues.length;
     for (const issue of issues) {
         console.error(`  ✖ ${name}: ${issue.message}`);
-        console.error(`      → set ${issue.key}=${issue.codeDefault} there, or update the code default in lib/modelEnv.ts`);
+        console.error(`      → ${issue.suggestion}`);
     }
 }
 
 if (issueCount === 0) process.exit(0);
 
 if (process.env.ALLOW_MODEL_ENV_DRIFT === '1') {
-    console.error(`  ⚠️  ${issueCount} model override(s) drifted; continuing because ALLOW_MODEL_ENV_DRIFT=1`);
+    console.error(`  ⚠️  ${issueCount} model env problem(s); continuing because ALLOW_MODEL_ENV_DRIFT=1`);
     process.exit(0);
 }
 
-console.error(`\n  ${issueCount} model override(s) would run a different model than this checkout.`);
+console.error(`\n  ${issueCount} problem(s): this env would not run the models this checkout declares.`);
 console.error('  Fix the env file, or re-run with ALLOW_MODEL_ENV_DRIFT=1 if the override is intentional.');
 process.exit(1);

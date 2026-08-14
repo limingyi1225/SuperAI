@@ -39,10 +39,30 @@ test('an unknown-but-different id is reported as drift, not silently accepted', 
     assert.equal(issues[0].codeDefault, 'gpt-5.6-luna');
 });
 
-test('the legacy CLAUDE_MODEL key is checked too', () => {
+test('the legacy CLAUDE_MODEL key is checked once, not once per preset it backs', () => {
     const issues = checkModelEnvOverrides({ CLAUDE_MODEL: 'claude-opus-4-6' });
-    assert.ok(issues.length > 0);
-    assert.ok(issues.every(issue => issue.key === 'CLAUDE_MODEL'));
+
+    assert.equal(issues.length, 1);
+    assert.equal(issues[0].key, 'CLAUDE_MODEL');
+    assert.match(issues[0].message, /claude-opus-5 \/ claude-fable-5/);
+    // Pinning the catch-all to one id would drag the other preset along with it.
+    assert.match(issues[0].suggestion, /remove CLAUDE_MODEL and set CLAUDE_MODEL_OPUS \/ CLAUDE_MODEL_FABLE/);
+});
+
+test('a legacy key holding one of the current defaults is not flagged', () => {
+    assert.deepEqual(checkModelEnvOverrides({ CLAUDE_MODEL: 'claude-fable-5' }), []);
+});
+
+test('an inline comment after a value is not read as part of the model id', () => {
+    const env = parseEnvFile('GEMINI_MODEL=gemini-3.7-flash   # keep in sync with lib/modelEnv.ts');
+
+    assert.equal(env.GEMINI_MODEL, 'gemini-3.7-flash');
+    assert.deepEqual(checkModelEnvOverrides(env), []);
+});
+
+test('a # inside a quoted value survives', () => {
+    const env = parseEnvFile('AUTH_USERS="a:pa#ss,b:c"');
+    assert.equal(env.AUTH_USERS, 'a:pa#ss,b:c');
 });
 
 test('parseEnvFile ignores comments and blanks and strips quotes', () => {
